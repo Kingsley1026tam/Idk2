@@ -3,255 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D First Person Explorer</title>
+    <title>Realistic 3D Explorer</title>
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
-            background-color: #87CEEB; /* Sky blue */
+            background-color: #87CEEB; 
             user-select: none;
             -webkit-user-select: none;
             touch-action: none;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* Crosshair in the center of the screen */
         #crosshair {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
             transform: translate(-50%, -50%);
-            pointer-events: none; /* Let clicks pass through */
+            pointer-events: none; 
+            z-index: 100;
         }
         #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background-color: rgba(255, 255, 255, 0.8);
+            content: ''; position: absolute; background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 2px black;
         }
         #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
         #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
 
-        /* The right half of the screen used for looking around */
+        /* Looking Area */
         #look-area {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 50%;
-            height: 100%;
-            z-index: 10;
+            position: absolute; top: 0; right: 0; width: 60%; height: 100%; z-index: 10;
         }
 
-        /* D-Pad Container on the bottom left */
+        /* D-Pad controls */
         #dpad {
-            position: absolute;
-            bottom: 30px;
-            left: 30px;
+            position: absolute; bottom: 30px; left: 30px;
             display: grid;
             grid-template-columns: 60px 60px 60px;
             grid-template-rows: 60px 60px 60px;
-            gap: 5px;
-            z-index: 20;
+            gap: 8px; z-index: 20;
         }
 
-        .d-btn {
-            background-color: rgba(255, 255, 255, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.7);
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            color: white;
-            cursor: pointer;
+        .btn {
+            background-color: rgba(20, 20, 20, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 18px; font-weight: bold; color: white;
+            cursor: pointer; backdrop-filter: blur(4px);
         }
-        .d-btn:active { background-color: rgba(255, 255, 255, 0.7); color: black; }
+        .btn:active { background-color: rgba(255, 255, 255, 0.8); color: black; }
 
-        /* Positioning the D-pad buttons */
         #btn-w { grid-column: 2; grid-row: 1; }
         #btn-a { grid-column: 1; grid-row: 2; }
         #btn-s { grid-column: 2; grid-row: 2; }
         #btn-d { grid-column: 3; grid-row: 2; }
 
-        /* Instructions */
-        #instructions {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            text-shadow: 1px 1px 2px black;
-            pointer-events: none;
-            z-index: 5;
+        /* Action Buttons */
+        #action-buttons {
+            position: absolute; bottom: 30px; right: 30px;
+            display: flex; gap: 15px; z-index: 20;
         }
+        .action-btn {
+            width: 80px; height: 60px;
+            border-radius: 30px; /* Pill shape */
+        }
+
+        /* Top UI */
+        #top-ui {
+            position: absolute; top: 15px; left: 15px;
+            display: flex; gap: 10px; z-index: 20;
+        }
+        .ui-btn { padding: 10px 20px; height: auto; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <div id="instructions">
-        <b>Mobile:</b> Left D-Pad moves, Right Screen looks.<br>
-        <b>PC:</b> W/A/S/D to move.
-    </div>
-
     <div id="crosshair"></div>
-
     <div id="look-area"></div>
 
+    <div id="top-ui">
+        <div id="btn-view" class="btn ui-btn">VIEW</div>
+    </div>
+
     <div id="dpad">
-        <div id="btn-w" class="d-btn">▲</div>
-        <div id="btn-a" class="d-btn">◀</div>
-        <div id="btn-s" class="d-btn">▼</div>
-        <div id="btn-d" class="d-btn">▶</div>
+        <div id="btn-w" class="btn">W</div>
+        <div id="btn-a" class="btn">A</div>
+        <div id="btn-s" class="btn">S</div>
+        <div id="btn-d" class="btn">D</div>
+    </div>
+
+    <div id="action-buttons">
+        <div id="btn-jump" class="btn action-btn">JUMP</div>
     </div>
 
     <script>
-        // 1. Scene & Fog Setup
+        // 1. Scene & Realistic Setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Sky color
-        scene.fog = new THREE.Fog(0x87CEEB, 10, 50);  // Fade out in the distance
+        scene.background = new THREE.Color(0x6CB4EE);
+        scene.fog = new THREE.Fog(0x6CB4EE, 20, 80);
 
-        // 2. Camera Setup (First Person)
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        // We set the rotation order to YXZ so looking up/down doesn't tilt the camera sideways
-        camera.rotation.order = 'YXZ'; 
-        camera.position.set(0, 2, 0); // Eye level height
-
-        // 3. Renderer Setup
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        // Enable soft shadows
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // 4. Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // 2. Realistic Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Soft cool light
         scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 20, 10);
-        scene.add(directionalLight);
 
-        // 5. Create the Ground (Grass)
-        const groundGeo = new THREE.PlaneGeometry(200, 200);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x4CAF50 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2; // Lay flat
+        const sunLight = new THREE.DirectionalLight(0xfff5b6, 1.2); // Warm sun
+        sunLight.position.set(50, 100, 50);
+        sunLight.castShadow = true;
+        // Configure shadow resolution and bounds
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 200;
+        sunLight.shadow.camera.left = -50;
+        sunLight.shadow.camera.right = 50;
+        sunLight.shadow.camera.top = 50;
+        sunLight.shadow.camera.bottom = -50;
+        scene.add(sunLight);
+
+        // 3. Player & Camera Rig (Crucial for 3rd person)
+        const player = new THREE.Group();
+        player.position.set(0, 1, 0); // Start position
+        scene.add(player);
+
+        // Visible Player Model (Red Box)
+        const playerMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 2, 1),
+            new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.7 })
+        );
+        playerMesh.position.y = 0; // Relative to player group
+        playerMesh.castShadow = true;
+        player.add(playerMesh);
+
+        // Head Group (Handles up/down looking independently of body)
+        const head = new THREE.Group();
+        head.position.y = 0.5; // Eye level relative to center of body
+        player.add(head);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        head.add(camera);
+
+        // 4. Create the World
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(300, 300),
+            new THREE.MeshStandardMaterial({ color: 0x3d8c40, roughness: 0.9 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
         scene.add(ground);
 
-        // 6. Generate a Random World (Blocks/Trees)
-        const blockGeo = new THREE.BoxGeometry(2, 4, 2);
-        const blockMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // Brown trunk color
-        const leafMat = new THREE.MeshStandardMaterial({ color: 0x228B22 }); // Dark green leaf color
+        // Generate Trees
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1.0 });
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8 });
+        const trunkGeo = new THREE.BoxGeometry(1.5, 4, 1.5);
+        const leafGeo = new THREE.BoxGeometry(5, 5, 5);
 
-        for (let i = 0; i < 100; i++) {
-            // Random positions spread across the ground
-            const x = (Math.random() - 0.5) * 100;
-            const z = (Math.random() - 0.5) * 100;
-            
-            // Keep the center clear where the player spawns
-            if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+        for (let i = 0; i < 60; i++) {
+            const x = (Math.random() - 0.5) * 150;
+            const z = (Math.random() - 0.5) * 150;
+            if (Math.abs(x) < 8 && Math.abs(z) < 8) continue; // Clear spawn area
 
-            const block = new THREE.Mesh(blockGeo, blockMat);
-            block.position.set(x, 2, z);
-            scene.add(block);
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.set(x, 2, z);
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            scene.add(trunk);
 
-            // Add leaves on top
-            const leaves = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), leafMat);
+            const leaves = new THREE.Mesh(leafGeo, leafMat);
             leaves.position.set(x, 6, z);
+            leaves.castShadow = true;
+            leaves.receiveShadow = true;
             scene.add(leaves);
         }
 
-        // 7. Input Tracking Variables
+        // 5. Game Logic Variables
         const move = { forward: false, backward: false, left: false, right: false };
-        let pitch = 0; // Up/Down angle
-        let yaw = 0;   // Left/Right angle
+        let yaw = 0;   // Left/Right turning (rotates Player)
+        let pitch = 0; // Up/Down looking (rotates Head)
+        
+        // Physics
+        let velocityY = 0;
+        const gravity = -0.015;
+        const jumpStrength = 0.35;
+        let isGrounded = true;
 
-        // --- LOOKING AROUND (Touch Screen Right Half) ---
+        // View Mode
+        let isThirdPerson = false;
+
+        // 6. Fix for touch screen tracking
         const lookArea = document.getElementById('look-area');
-        let previousTouch = null;
+        let lookTouchId = null; // Strictly track ONE finger
+        let previousX = 0;
+        let previousY = 0;
 
         lookArea.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            previousTouch = e.touches[0];
+            // If we aren't currently tracking a looking finger, register this one
+            if (lookTouchId === null) {
+                const touch = e.changedTouches[0];
+                lookTouchId = touch.identifier;
+                previousX = touch.pageX;
+                previousY = touch.pageY;
+            }
         }, { passive: false });
 
         lookArea.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            if (previousTouch) {
-                // Calculate how far the finger moved
-                const deltaX = touch.pageX - previousTouch.pageX;
-                const deltaY = touch.pageY - previousTouch.pageY;
+            // Find the specific finger we are tracking
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === lookTouchId) {
+                    const deltaX = touch.pageX - previousX;
+                    const deltaY = touch.pageY - previousY;
 
-                // Adjust angles based on movement
-                yaw -= deltaX * 0.005;
-                pitch -= deltaY * 0.005;
+                    yaw -= deltaX * 0.005;
+                    pitch -= deltaY * 0.005;
 
-                // Clamp pitch so you can't look past straight up or straight down
-                pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+                    // Clamp pitch so you don't break your neck
+                    pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
 
-                // Apply rotations to camera
-                camera.rotation.set(pitch, yaw, 0);
+                    // Apply rotations
+                    player.rotation.y = yaw; // Turn the whole body
+                    head.rotation.x = pitch; // Tilt only the head/camera
+
+                    previousX = touch.pageX;
+                    previousY = touch.pageY;
+                    break;
+                }
             }
-            previousTouch = touch;
         }, { passive: false });
 
-        lookArea.addEventListener('touchend', () => {
-            previousTouch = null;
+        lookArea.addEventListener('touchend', (e) => {
+            // If the finger we were tracking leaves the screen, stop tracking
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === lookTouchId) {
+                    lookTouchId = null;
+                    break;
+                }
+            }
         });
 
-        // --- MOVEMENT (D-Pad Left Half) ---
-        function setupButton(id, direction) {
+        // 7. Input Wiring (Buttons)
+        function setupBtn(id, actionOn, actionOff) {
             const btn = document.getElementById(id);
-            const startMove = (e) => { e.preventDefault(); move[direction] = true; };
-            const stopMove = (e) => { e.preventDefault(); move[direction] = false; };
+            const start = (e) => { e.preventDefault(); actionOn(); };
+            const stop = (e) => { e.preventDefault(); if(actionOff) actionOff(); };
             
-            btn.addEventListener('touchstart', startMove, { passive: false });
-            btn.addEventListener('touchend', stopMove);
-            btn.addEventListener('mousedown', startMove); // For PC testing
-            btn.addEventListener('mouseup', stopMove);
-            btn.addEventListener('mouseleave', stopMove);
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', stop);
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', stop);
+            btn.addEventListener('mouseleave', stop);
         }
 
-        setupButton('btn-w', 'forward');
-        setupButton('btn-s', 'backward');
-        setupButton('btn-a', 'left');
-        setupButton('btn-d', 'right');
+        // Movement
+        setupBtn('btn-w', () => move.forward = true, () => move.forward = false);
+        setupBtn('btn-s', () => move.backward = true, () => move.backward = false);
+        setupBtn('btn-a', () => move.left = true, () => move.left = false);
+        setupBtn('btn-d', () => move.right = true, () => move.right = false);
 
-        // --- KEYBOARD SUPPORT (For PC) ---
+        // Jump
+        setupBtn('btn-jump', () => {
+            if (isGrounded) {
+                velocityY = jumpStrength;
+                isGrounded = false;
+            }
+        });
+
+        // Camera Toggle
+        setupBtn('btn-view', () => {
+            isThirdPerson = !isThirdPerson;
+            if (isThirdPerson) {
+                // Move camera behind and slightly up from the head
+                camera.position.set(0, 1.5, 5);
+                playerMesh.visible = true;
+            } else {
+                // Move camera back inside the head
+                camera.position.set(0, 0, 0);
+                playerMesh.visible = false;
+            }
+        });
+
+        // Keyboard Support for PC testing
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyW' || e.key === 'ArrowUp') move.forward = true;
-            if (e.code === 'KeyS' || e.key === 'ArrowDown') move.backward = true;
-            if (e.code === 'KeyA' || e.key === 'ArrowLeft') move.left = true;
-            if (e.code === 'KeyD' || e.key === 'ArrowRight') move.right = true;
+            if (e.code === 'KeyW') move.forward = true;
+            if (e.code === 'KeyS') move.backward = true;
+            if (e.code === 'KeyA') move.left = true;
+            if (e.code === 'KeyD') move.right = true;
+            if (e.code === 'Space' && isGrounded) { velocityY = jumpStrength; isGrounded = false; }
         });
         window.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW' || e.key === 'ArrowUp') move.forward = false;
-            if (e.code === 'KeyS' || e.key === 'ArrowDown') move.backward = false;
-            if (e.code === 'KeyA' || e.key === 'ArrowLeft') move.left = false;
-            if (e.code === 'KeyD' || e.key === 'ArrowRight') move.right = false;
+            if (e.code === 'KeyW') move.forward = false;
+            if (e.code === 'KeyS') move.backward = false;
+            if (e.code === 'KeyA') move.left = false;
+            if (e.code === 'KeyD') move.right = false;
         });
 
+        // Hide player mesh to start (1st person default)
+        playerMesh.visible = false;
+
         // 8. Main Game Loop
-        const walkSpeed = 0.15;
+        const walkSpeed = 0.2;
 
         function animate() {
             requestAnimationFrame(animate);
 
-            // Move the camera relative to where it is looking.
-            // translateZ moves along the camera's local forward/backward axis.
-            // translateX moves along the camera's local left/right axis.
-            if (move.forward) camera.translateZ(-walkSpeed);
-            if (move.backward) camera.translateZ(walkSpeed);
-            if (move.left) camera.translateX(-walkSpeed);
-            if (move.right) camera.translateX(walkSpeed);
+            // Movement logic
+            if (move.forward) player.translateZ(-walkSpeed);
+            if (move.backward) player.translateZ(walkSpeed);
+            if (move.left) player.translateX(-walkSpeed);
+            if (move.right) player.translateX(walkSpeed);
 
-            // Lock camera height to eye level (prevents flying when looking up and moving forward)
-            camera.position.y = 2;
+            // Physics logic (Gravity)
+            velocityY += gravity;
+            player.position.y += velocityY;
+
+            // Ground Collision
+            if (player.position.y <= 1) { // 1 is half the player height
+                player.position.y = 1;
+                velocityY = 0;
+                isGrounded = true;
+            }
 
             renderer.render(scene, camera);
         }
         animate();
 
-        // 9. Handle Window Resizing
+        // 9. Resize Handling
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
