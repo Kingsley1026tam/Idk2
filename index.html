@@ -3,35 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Realistic Hilly Explorer</title>
+    <title>Realistic Hilly Explorer (Fixed Controls)</title>
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
             background-color: #6CB4EE; 
+            /* This utterly disables native browser scrolling, pull-to-refresh, and zooming */
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* Prevents default browser zooming/scrolling */
+            touch-action: none; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* UI Overlays */
         #crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 20px; height: 20px;
-            transform: translate(-50%, -50%);
-            pointer-events: none; 
-            z-index: 100;
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 100;
         }
         #crosshair::before, #crosshair::after {
-            content: ''; position: absolute; background-color: rgba(255, 255, 255, 0.8);
-            box-shadow: 0 0 2px black;
+            content: ''; position: absolute; background-color: rgba(255, 255, 255, 0.8); box-shadow: 0 0 2px black;
         }
         #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
         #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
 
-        /* Right half of screen for looking around */
         #look-area {
             position: absolute; top: 0; right: 0; width: 50%; height: 100%; z-index: 10;
         }
@@ -39,7 +33,7 @@
         /* Virtual Joystick */
         #joystick-zone {
             position: absolute; bottom: 30px; left: 30px;
-            width: 120px; height: 120px;
+            width: 140px; height: 140px; /* Made slightly larger for comfort */
             border-radius: 50%;
             background-color: rgba(20, 20, 20, 0.3);
             border: 2px solid rgba(255, 255, 255, 0.5);
@@ -49,28 +43,25 @@
         }
         #joystick-stick {
             position: absolute; top: 50%; left: 50%;
-            width: 50px; height: 50px;
+            width: 60px; height: 60px;
             border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 0.9);
             transform: translate(-50%, -50%);
-            pointer-events: none; /* Let the zone handle the touches */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            pointer-events: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        /* Action Buttons */
         #action-buttons {
             position: absolute; bottom: 30px; right: 30px;
             display: flex; gap: 15px; z-index: 20;
         }
         .btn {
-            background-color: rgba(20, 20, 20, 0.5);
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            background-color: rgba(20, 20, 20, 0.5); border: 2px solid rgba(255, 255, 255, 0.5);
             display: flex; justify-content: center; align-items: center;
-            font-size: 18px; font-weight: bold; color: white;
-            cursor: pointer; backdrop-filter: blur(4px);
+            font-size: 20px; font-weight: bold; color: white; cursor: pointer; backdrop-filter: blur(4px);
         }
-        .btn:active { background-color: rgba(255, 255, 255, 0.8); color: black; }
-        .action-btn { width: 80px; height: 60px; border-radius: 30px; }
+        .btn:active { background-color: rgba(255, 255, 255, 0.9); color: black; }
+        .action-btn { width: 90px; height: 70px; border-radius: 35px; }
         
         #instructions {
             position: absolute; top: 15px; left: 15px; color: white; text-shadow: 1px 1px 3px black; pointer-events: none; z-index: 5;
@@ -81,7 +72,8 @@
 <body>
 
     <div id="instructions">
-        Scroll / Pinch to Zoom (1st & 3rd Person)
+        Scroll (PC) or Pinch (Mobile) to Zoom<br>
+        1st & 3rd Person View
     </div>
 
     <div id="crosshair"></div>
@@ -96,7 +88,7 @@
     </div>
 
     <script>
-        // 1. Scene & Lighting (Realistic Setup)
+        // --- 1. Basic Three.js Setup ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x6CB4EE);
         scene.fog = new THREE.Fog(0x6CB4EE, 30, 100);
@@ -113,66 +105,55 @@
         const sunLight = new THREE.DirectionalLight(0xfff5b6, 1.2);
         sunLight.position.set(50, 100, 50);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.mapSize.width = 2048; sunLight.shadow.mapSize.height = 2048;
         sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 200;
         sunLight.shadow.camera.left = -60; sunLight.shadow.camera.right = 60;
         sunLight.shadow.camera.top = 60; sunLight.shadow.camera.bottom = -60;
         scene.add(sunLight);
 
-        // 2. Math Function to Generate Rolling Hills
+        // --- 2. Terrain Generation ---
         function getTerrainHeight(x, z) {
-            // Combine a few sine/cosine waves for organic looking hills
             let height = Math.sin(x * 0.05) * 3;
             height += Math.cos(z * 0.04) * 4;
             height += Math.sin((x + z) * 0.02) * 5;
             return height;
         }
 
-        // 3. Create the Hilly Terrain
-        // We use more segments (100x100) so the geometry can bend smoothly
         const groundGeo = new THREE.PlaneGeometry(300, 300, 100, 100);
         groundGeo.rotateX(-Math.PI / 2);
         
         const vertices = groundGeo.attributes.position.array;
         for (let i = 0; i < vertices.length; i += 3) {
-            let vx = vertices[i];
-            let vz = vertices[i + 2];
-            // Apply our math function to the Y axis of the vertices
-            vertices[i + 1] = getTerrainHeight(vx, vz); 
+            vertices[i + 1] = getTerrainHeight(vertices[i], vertices[i + 2]); 
         }
-        groundGeo.computeVertexNormals(); // Recompute so lighting looks correct on hills
+        groundGeo.computeVertexNormals();
 
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x3d8c40, roughness: 0.9, flatShading: false });
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x3d8c40, roughness: 0.9 });
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Generate Trees directly on the hills
+        // Trees
         const trunkGeo = new THREE.BoxGeometry(1.5, 4, 1.5);
         const leafGeo = new THREE.BoxGeometry(5, 5, 5);
         const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1.0 });
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8 });
 
         for (let i = 0; i < 80; i++) {
-            const x = (Math.random() - 0.5) * 200;
-            const z = (Math.random() - 0.5) * 200;
-            if (Math.abs(x) < 10 && Math.abs(z) < 10) continue; // Clear spawn
-
+            const x = (Math.random() - 0.5) * 200; const z = (Math.random() - 0.5) * 200;
+            if (Math.abs(x) < 10 && Math.abs(z) < 10) continue; 
             const yHeight = getTerrainHeight(x, z);
 
             const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-            trunk.position.set(x, yHeight + 2, z);
-            trunk.castShadow = true; trunk.receiveShadow = true;
+            trunk.position.set(x, yHeight + 2, z); trunk.castShadow = true; trunk.receiveShadow = true;
             scene.add(trunk);
 
             const leaves = new THREE.Mesh(leafGeo, leafMat);
-            leaves.position.set(x, yHeight + 6, z);
-            leaves.castShadow = true; leaves.receiveShadow = true;
+            leaves.position.set(x, yHeight + 6, z); leaves.castShadow = true; leaves.receiveShadow = true;
             scene.add(leaves);
         }
 
-        // 4. Player & Roblox-Style Camera Rig
+        // --- 3. Player Rig ---
         const player = new THREE.Group();
         player.position.set(0, getTerrainHeight(0,0) + 1, 0);
         scene.add(player);
@@ -181,8 +162,7 @@
             new THREE.BoxGeometry(1, 2, 1),
             new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.7 })
         );
-        playerMesh.position.y = 0; 
-        playerMesh.castShadow = true;
+        playerMesh.position.y = 0; playerMesh.castShadow = true;
         player.add(playerMesh);
 
         const head = new THREE.Group();
@@ -192,180 +172,190 @@
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         head.add(camera);
 
-        // --- Roblox Scrolling / Zoom Logic ---
-        let camDistance = 0; // 0 = 1st person
+        // --- Camera Zoom ---
+        let camDistance = 0; 
         const maxCamDistance = 10;
-
         function updateCameraZoom() {
-            // Push camera back on the Z axis
-            camera.position.set(0, camDistance * 0.2, camDistance); // Add slight height when zooming out
-            // Hide player model if zoomed all the way in
-            playerMesh.visible = camDistance > 1;
+            camera.position.set(0, camDistance * 0.2, camDistance); 
+            playerMesh.visible = camDistance > 1; // Hide body in 1st person
         }
-        updateCameraZoom(); // Init
+        updateCameraZoom();
 
-        // PC Wheel scrolling
         window.addEventListener('wheel', (e) => {
             camDistance += e.deltaY * 0.01;
             camDistance = Math.max(0, Math.min(maxCamDistance, camDistance));
             updateCameraZoom();
         });
 
-        // Mobile Pinch to zoom
-        let initialPinchDistance = null;
-        document.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                initialPinchDistance = Math.hypot(
-                    e.touches[0].pageX - e.touches[1].pageX,
-                    e.touches[0].pageY - e.touches[1].pageY
-                );
-            }
-        }, { passive: false });
-
-        document.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && initialPinchDistance !== null) {
-                e.preventDefault(); // Stop screen from zooming
-                const currentPinch = Math.hypot(
-                    e.touches[0].pageX - e.touches[1].pageX,
-                    e.touches[0].pageY - e.touches[1].pageY
-                );
-                const delta = initialPinchDistance - currentPinch;
-                camDistance += delta * 0.05;
-                camDistance = Math.max(0, Math.min(maxCamDistance, camDistance));
-                updateCameraZoom();
-                initialPinchDistance = currentPinch; // reset for smooth dragging
-            }
-        }, { passive: false });
-        
-        document.addEventListener('touchend', (e) => {
-            if (e.touches.length < 2) initialPinchDistance = null;
-        });
-
-        // 5. Game Logic Variables
-        let yaw = 0; let pitch = 0;
-        let velocityY = 0;
-        const gravity = -0.015;
-        const jumpStrength = 0.4;
-        let isGrounded = true;
-
-        // --- Joystick Logic ---
+        // --- 4. BULLETPROOF MULTI-TOUCH ENGINE ---
         const zone = document.getElementById('joystick-zone');
         const stick = document.getElementById('joystick-stick');
-        let joyActive = false;
-        let joyVector = { x: 0, y: 0 }; // Values from -1 to 1
+        const lookArea = document.getElementById('look-area');
 
-        function handleJoystick(e) {
-            e.preventDefault();
+        // We assign an ID to the exact finger doing the task
+        let joyTouchId = null;
+        let lookTouchId = null;
+        
+        let joyActive = false;
+        let joyVector = { x: 0, y: 0 };
+        let yaw = 0; let pitch = 0;
+        let previousX = 0; let previousY = 0;
+        let initialPinchDistance = null;
+
+        // Joystick Input Logic
+        function calculateJoystick(clientX, clientY) {
             const rect = zone.getBoundingClientRect();
-            // Center of the joystick base
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
             
-            // Touch or Mouse coordinates
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            // Calculate distance and angle from center
             let deltaX = clientX - centerX;
             let deltaY = clientY - centerY;
             const distance = Math.min(rect.width / 2, Math.hypot(deltaX, deltaY));
             const angle = Math.atan2(deltaY, deltaX);
 
-            // Move the visual stick (constrained to the circle)
             const stickX = distance * Math.cos(angle);
             const stickY = distance * Math.sin(angle);
             stick.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
 
-            // Normalize input values (-1 to 1) for movement engine
             joyVector.x = stickX / (rect.width / 2);
             joyVector.y = stickY / (rect.height / 2);
         }
 
-        function stopJoystick(e) {
-            e.preventDefault();
-            joyActive = false;
-            joyVector = { x: 0, y: 0 };
-            stick.style.transform = `translate(-50%, -50%)`;
-        }
+        // TOUCH START
+        document.addEventListener('touchstart', (e) => {
+            // Prevent all default zooming/scrolling on mobile
+            if (e.target.tagName !== 'BUTTON') e.preventDefault(); 
 
-        zone.addEventListener('touchstart', (e) => { joyActive = true; handleJoystick(e); }, { passive: false });
-        zone.addEventListener('touchmove', (e) => { if (joyActive) handleJoystick(e); }, { passive: false });
-        zone.addEventListener('touchend', stopJoystick);
-        zone.addEventListener('mousedown', (e) => { joyActive = true; handleJoystick(e); });
-        window.addEventListener('mousemove', (e) => { if (joyActive) handleJoystick(e); });
-        window.addEventListener('mouseup', stopJoystick);
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const target = document.elementFromPoint(touch.clientX, touch.clientY);
 
-        // --- Look Area Logic ---
-        const lookArea = document.getElementById('look-area');
-        let lookTouchId = null;
-        let previousX = 0; let previousY = 0;
+                // If finger starts on joystick
+                if ((target === zone || target === stick) && joyTouchId === null) {
+                    joyTouchId = touch.identifier;
+                    joyActive = true;
+                    calculateJoystick(touch.clientX, touch.clientY);
+                } 
+                // If finger starts on the right screen
+                else if (target === lookArea && lookTouchId === null) {
+                    lookTouchId = touch.identifier;
+                    previousX = touch.pageX;
+                    previousY = touch.pageY;
+                }
+            }
 
-        lookArea.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (lookTouchId === null) {
-                const touch = e.changedTouches[0];
-                lookTouchId = touch.identifier;
-                previousX = touch.pageX; previousY = touch.pageY;
+            // Pinch to Zoom Logic (Only if 2 fingers are touching, and NEITHER is the joystick)
+            let nonJoystickTouches = [];
+            for(let i=0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier !== joyTouchId) nonJoystickTouches.push(e.touches[i]);
+            }
+            if (nonJoystickTouches.length === 2) {
+                initialPinchDistance = Math.hypot(
+                    nonJoystickTouches[0].pageX - nonJoystickTouches[1].pageX,
+                    nonJoystickTouches[0].pageY - nonJoystickTouches[1].pageY
+                );
             }
         }, { passive: false });
 
-        lookArea.addEventListener('touchmove', (e) => {
+        // TOUCH MOVE (Global so finger doesn't drop if it slides)
+        document.addEventListener('touchmove', (e) => {
             e.preventDefault();
+
+            // Handle Pinch Zooming
+            let nonJoystickTouches = [];
+            for(let i=0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier !== joyTouchId) nonJoystickTouches.push(e.touches[i]);
+            }
+            if (nonJoystickTouches.length === 2 && initialPinchDistance !== null) {
+                const currentPinch = Math.hypot(
+                    nonJoystickTouches[0].pageX - nonJoystickTouches[1].pageX,
+                    nonJoystickTouches[0].pageY - nonJoystickTouches[1].pageY
+                );
+                camDistance += (initialPinchDistance - currentPinch) * 0.05;
+                camDistance = Math.max(0, Math.min(maxCamDistance, camDistance));
+                updateCameraZoom();
+                initialPinchDistance = currentPinch;
+                return; // Stop processing looking while zooming
+            }
+
+            // Handle Joystick and Looking
             for (let i = 0; i < e.changedTouches.length; i++) {
                 const touch = e.changedTouches[i];
-                if (touch.identifier === lookTouchId) {
+                
+                if (joyActive && touch.identifier === joyTouchId) {
+                    calculateJoystick(touch.clientX, touch.clientY);
+                } 
+                else if (touch.identifier === lookTouchId) {
                     yaw -= (touch.pageX - previousX) * 0.005;
                     pitch -= (touch.pageY - previousY) * 0.005;
                     pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-
                     player.rotation.y = yaw; 
                     head.rotation.x = pitch; 
-
                     previousX = touch.pageX; previousY = touch.pageY;
-                    break;
                 }
             }
         }, { passive: false });
 
-        lookArea.addEventListener('touchend', (e) => {
+        // TOUCH END
+        function handleTouchEnd(e) {
             for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === lookTouchId) lookTouchId = null;
+                const touch = e.changedTouches[i];
+                if (touch.identifier === joyTouchId) {
+                    joyTouchId = null; joyActive = false; joyVector = { x: 0, y: 0 };
+                    stick.style.transform = `translate(-50%, -50%)`; // Reset stick
+                }
+                if (touch.identifier === lookTouchId) lookTouchId = null;
             }
-        });
+            if (e.touches.length < 2) initialPinchDistance = null;
+        }
+        document.addEventListener('touchend', handleTouchEnd);
+        document.addEventListener('touchcancel', handleTouchEnd);
 
-        // --- Jump Button ---
+
+        // --- 5. Dynamic Physics & Jump ---
+        let velocityY = 0;
+        // DYNAMIC JUMP TWEAKS: Stronger gravity (-0.03 instead of -0.015) 
+        // Higher initial jump burst (0.6 instead of 0.35)
+        const gravity = -0.03; 
+        const jumpStrength = 0.6; 
+        let isGrounded = true;
+
         const btnJump = document.getElementById('btn-jump');
-        function doJump(e) { e.preventDefault(); if (isGrounded) { velocityY = jumpStrength; isGrounded = false; } }
+        function doJump(e) { 
+            e.preventDefault(); 
+            if (isGrounded) { 
+                velocityY = jumpStrength; 
+                isGrounded = false; 
+            } 
+        }
         btnJump.addEventListener('touchstart', doJump, { passive: false });
-        btnJump.addEventListener('mousedown', doJump);
+        btnJump.addEventListener('mousedown', doJump); // PC support
         window.addEventListener('keydown', (e) => { if (e.code === 'Space') doJump(e); });
 
-        // 6. Main Game Loop
+        // --- 6. Main Game Loop ---
         const walkSpeed = 0.2;
 
         function animate() {
             requestAnimationFrame(animate);
 
-            // Apply Joystick Movement
-            // joyVector.y handles forward/back, joyVector.x handles left/right
+            // Move character
             if (joyVector.y !== 0) player.translateZ(joyVector.y * walkSpeed);
             if (joyVector.x !== 0) player.translateX(joyVector.x * walkSpeed);
 
-            // Physics logic (Gravity)
+            // Apply gravity
             velocityY += gravity;
             player.position.y += velocityY;
 
-            // --- Terrain Collision (Hills) ---
-            // Calculate what the ground height is exactly where the player is standing
+            // Ground Collision
             const terrainHeight = getTerrainHeight(player.position.x, player.position.z);
-            const playerHeightOffset = 1; // Center of player mesh is 1 unit above bottom
+            const playerHeightOffset = 1; 
 
             if (player.position.y <= terrainHeight + playerHeightOffset) { 
                 player.position.y = terrainHeight + playerHeightOffset;
                 velocityY = 0;
                 isGrounded = true;
             } else {
-                isGrounded = false; // Falling
+                isGrounded = false; 
             }
 
             renderer.render(scene, camera);
