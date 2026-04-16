@@ -84,7 +84,6 @@
         .nav-tab svg { width: 26px; height: 26px; fill: currentColor; }
         .nav-tab span { font-size: 10px; margin-top: 4px; font-weight: 600; }
 
-        /* Custom pulsing marker for highlighted stop */
         .pulse-icon { width: 20px; height: 20px; background: var(--highlight-blue); border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 rgba(0, 122, 255, 0.4); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); } }
     </style>
@@ -94,29 +93,31 @@
 <div class="app-container">
     
     <div id="page-home" class="page active">
-        <div class="app-header"><h1>香港巴士</h1></div>
-        <div class="scrollable-content">
-            <h2 class="section-title">已儲存</h2>
-            <div id="nearby-list"><p style="padding:10px; color:#888; font-size: 14px;">暫無已儲存路線。請搜尋路線並點擊儲存。</p></div>
+        <div class="app-header"><h1>全部路線</h1></div>
+        <div class="scrollable-content" id="all-routes-list">
+            <p style="padding:10px; color:#888;">載入路線資料庫中...</p>
         </div>
     </div>
 
     <div id="page-search" class="page">
-        <div class="app-header" style="padding-bottom:10px;"><h1>搜尋</h1></div>
+        <div class="app-header" style="padding-bottom:10px;"><h1>搜尋與附近</h1></div>
         <div class="search-box">
             <div class="search-input-wrapper">
                 <svg viewBox="0 0 24 24" width="18" fill="#8e8e93"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="searchInput" placeholder="搜尋路線 (例如 619)" autocomplete="off">
             </div>
         </div>
-        <div class="scrollable-content" id="search-results">
-            <p style="padding:10px; color:#888;">載入路線資料庫中...</p>
+        <div class="scrollable-content">
+            <h2 class="section-title" id="search-section-title">已儲存 / 附近車站定位</h2>
+            <div id="search-results">
+                <p style="padding:10px; color:#888;">準備中...</p>
+            </div>
         </div>
     </div>
 
     <div id="page-details" class="page">
         <div class="back-bar">
-            <button class="back-btn" onclick="showPage('search')">
+            <button class="back-btn" id="btn-back-action">
                 <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg> 返回
             </button>
             <div id="details-title" style="font-weight:700; font-size:15px;"></div>
@@ -128,10 +129,10 @@
 
     <div class="bottom-nav">
         <div class="nav-tab active" id="tab-home" onclick="showPage('home')">
-            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>首頁</span>
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>全部</span>
         </div>
         <div class="nav-tab" id="tab-search" onclick="showPage('search')">
-            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>搜尋 / 全部</span>
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>附近 / 搜尋</span>
         </div>
     </div>
 </div>
@@ -142,11 +143,12 @@
     let map = null;
     let mapPolyline = null;
     let mapMarkersGroup = null;
-    let mapHighlightMarker = null; // Specially for pointing out the opened station
+    let mapHighlightMarker = null; 
     let currentEtaToken = 0; 
     let currentRouteIndex = -1;
     let favorites = JSON.parse(localStorage.getItem('hkbus_favs')) || [];
     let userLoc = null;
+    let previousPage = 'home'; // 用來記錄是從首頁還是搜尋頁點入路線
 
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3; 
@@ -162,22 +164,30 @@
         if(navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
                 userLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                renderFavorites(); 
+                if (document.getElementById('page-search').classList.contains('active')) {
+                    performSearch(); // 定位成功後刷新附近路線
+                }
             }, () => {});
         }
     }
 
     function showPage(id) {
+        if (id === 'home' || id === 'search') previousPage = id;
+        
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        
         document.getElementById('page-' + id).classList.add('active');
         if(id !== 'details') {
             document.getElementById('tab-' + id).classList.add('active');
         }
         
-        if(id === 'home') renderFavorites();
-        if(id === 'search') performSearch(); // Ensure search page shows content
+        if(id === 'search') performSearch(); 
     }
+
+    document.getElementById('btn-back-action').addEventListener('click', () => {
+        showPage(previousPage);
+    });
 
     function parseEtaToText(etaStr) {
         if(!etaStr) return { min: -1, text: '未有資料' };
@@ -229,13 +239,16 @@
             }
 
             if (allRoutesStore.length > 0) {
+                // 將所有路線渲染到首頁 (Home)
+                const allHTML = allRoutesStore.map((r, index) => renderItem(r, index, false)).join('');
+                document.getElementById('all-routes-list').innerHTML = allHTML;
+                
                 initLocation();
-                performSearch(); // Populate search page with all routes initially
             } else {
-                document.getElementById('search-results').innerHTML = '<p style="padding:10px; color:red;">無法獲取 API 資料。</p>';
+                document.getElementById('all-routes-list').innerHTML = '<p style="padding:10px; color:red;">無法獲取 API 資料。</p>';
             }
         } catch (e) {
-            document.getElementById('search-results').innerHTML = '<p style="padding:10px; color:red;">系統發生錯誤。</p>';
+            document.getElementById('all-routes-list').innerHTML = '<p style="padding:10px; color:red;">系統發生錯誤。</p>';
         }
     }
 
@@ -267,19 +280,39 @@
             </div>`;
     }
 
-    // UPDATED: Search function with partial match (includes)
+    // 搜尋頁邏輯：空白顯示附近(Saved)，打字顯示搜尋結果
     function performSearch() {
         const query = document.getElementById('searchInput').value.toUpperCase().trim();
         const results = document.getElementById('search-results');
+        const title = document.getElementById('search-section-title');
         
         if(!query) {
-            // When empty, show all routes (limited to first 100 for performance to avoid lag)
-            const allHTML = allRoutesStore.slice(0, 100).map((r) => renderItem(r, allRoutesStore.indexOf(r), false)).join('');
-            results.innerHTML = `<h2 class="section-title">所有路線</h2>` + allHTML;
+            // 空白時：顯示已儲存/附近車站
+            title.style.display = 'block';
+            title.innerText = "已儲存 / 附近車站定位";
+            
+            const favHTML = favorites.map(idx => {
+                if(allRoutesStore[idx]) return renderItem(allRoutesStore[idx], idx, true);
+                return '';
+            }).join('');
+            
+            if(favHTML) {
+                results.innerHTML = favHTML;
+                if(userLoc) {
+                    favorites.forEach(idx => {
+                        if(allRoutesStore[idx]) processNearestFav(allRoutesStore[idx], idx);
+                    });
+                }
+            } else {
+                results.innerHTML = '<p style="text-align:center; padding:20px; color:#888;">尚未儲存路線。<br>請搜尋路線並儲存後，此處將自動為您尋找附近車站時間。</p>';
+            }
             return;
         }
         
-        // Filter by partial match (includes)
+        // 有打字時：顯示模糊搜尋結果
+        title.style.display = 'block';
+        title.innerText = "搜尋結果";
+        
         const filteredHTML = allRoutesStore
             .filter(r => r.no.includes(query))
             .map((r) => renderItem(r, allRoutesStore.indexOf(r), false))
@@ -288,7 +321,6 @@
         results.innerHTML = filteredHTML || '<p style="text-align:center; padding:20px; color: #888;">找不到包含此字眼的路線。</p>';
     }
 
-    // Attach input event for instant search
     document.getElementById('searchInput').addEventListener('input', performSearch);
 
     async function processNearestFav(r, index) {
@@ -354,25 +386,6 @@
         }
     }
 
-    function renderFavorites() {
-        const list = document.getElementById('nearby-list');
-        const favHTML = favorites.map(idx => {
-            if(allRoutesStore[idx]) return renderItem(allRoutesStore[idx], idx, true);
-            return '';
-        }).join('');
-        
-        if(favHTML) {
-            list.innerHTML = favHTML;
-            if(userLoc) {
-                favorites.forEach(idx => {
-                    if(allRoutesStore[idx]) processNearestFav(allRoutesStore[idx], idx);
-                });
-            }
-        } else {
-            list.innerHTML = '<p style="padding:10px; color:#888; font-size: 14px;">暫無已儲存路線。請搜尋路線並點擊儲存。</p>';
-        }
-    }
-
     function toggleFav() {
         if(currentRouteIndex === -1) return;
         const btn = document.getElementById('fav-btn');
@@ -389,6 +402,11 @@
             btn.style.color = "#fff";
         }
         localStorage.setItem('hkbus_favs', JSON.stringify(favorites));
+        
+        // 如果此時在搜尋頁面且搜尋框空白，更新附近路線顯示
+        if (document.getElementById('page-search').classList.contains('active') && !document.getElementById('searchInput').value) {
+            performSearch();
+        }
     }
 
     function openRoute(index) {
@@ -405,28 +423,22 @@
         openDetails(r.no, r.co, r.dir, r.dest, r.routeId, r.serviceType);
     }
 
-    // UPDATED: Accordion toggle and Map Marker function
     window.toggleStop = function(element, lat, lng) {
         const isCurrentlyExpanded = element.classList.contains('expanded');
         
-        // 1. Close all other stops
         document.querySelectorAll('.stop-container').forEach(el => {
             el.classList.remove('expanded');
         });
 
-        // 2. Remove old highlight marker from map
         if (mapHighlightMarker) {
             map.removeLayer(mapHighlightMarker);
             mapHighlightMarker = null;
         }
 
-        // 3. Open the clicked one if it wasn't open
         if (!isCurrentlyExpanded) {
             element.classList.add('expanded');
             
-            // 4. Highlight on map if lat/lng are valid
             if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                // Create a pulsing div icon
                 const pulseIcon = L.divIcon({
                     className: 'custom-div-icon',
                     html: '<div class="pulse-icon"></div>',
@@ -435,15 +447,16 @@
                 });
 
                 mapHighlightMarker = L.marker([lat, lng], {icon: pulseIcon, zIndexOffset: 1000}).addTo(map);
-                
-                // Pan map to the station smoothly
                 map.setView([lat, lng], 16, { animate: true, duration: 0.5 });
             }
         }
     };
 
     async function openDetails(no, co, dir, dest, routeId, serviceType) {
-        showPage('details');
+        // 使用 showPage 開啟詳情頁，以確保返回時能回到正確的前一頁
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-details').classList.add('active');
+        
         document.getElementById('details-title').innerText = `${no} 往 ${dest || '未知'}`;
         const list = document.getElementById('details-list');
         list.innerHTML = '<p style="padding:40px; text-align:center; color:#888;">正在讀取實時到站時間...</p>';
@@ -466,7 +479,6 @@
         mapPolyline = L.polyline([], {color: mainColor, weight: 4, opacity: 0.8}).addTo(map);
         mapMarkersGroup = L.layerGroup().addTo(map);
 
-        // UPDATED: buildStopHTML now accepts lat and lng
         const buildStopHTML = (seq, name, etas, color, lat = null, lng = null) => {
             let primaryText = '未有資料';
             let detailsHtml = '<div class="eta-line">沒有班次資料</div>';
@@ -484,7 +496,6 @@
                 if(detailsHtml === '') detailsHtml = '<div class="eta-line">沒有班次資料</div>';
             }
 
-            // Added onclick event passing lat and lng
             return `
             <div class="stop-container" onclick="toggleStop(this, ${lat}, ${lng})">
                 <div class="stop-row" id="row-${myToken}-${seq}">
@@ -540,7 +551,6 @@
                         const stopEtas = allEtas.filter(e => String(e.seq) === String(s.seq) && e.dir === dirLetter && e.eta).map(e => e.eta);
                         
                         const container = document.getElementById(`row-${myToken}-${s.seq}`);
-                        // Pass lat and lng to build function
                         if(container) container.parentElement.outerHTML = buildStopHTML(s.seq, stopName, stopEtas, mainColor, lat, lng);
                     } catch(err) {}
                 }
