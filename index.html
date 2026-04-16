@@ -7,11 +7,14 @@
     
     <style>
         :root {
-            /* Requested Light Blue Background */
-            --bg-color: rgb(128, 182, 255); 
+            /* Clean White/Dark Theme */
+            --bg-color: #ffffff; 
+            --app-bg: #f8f9fa;
             --nav-bg: #1c1c1c; 
-            --active-color: #df8555; 
-            --text-color: #333;
+            --active-color: #1c1c1c; /* Dark bubble for active nav */
+            --text-color: #1c1c1c;
+            --text-muted: #6c757d;
+            
             /* Company Colors */
             --kmb-color: #ed1d24;
             --ctb-color: #fccc0a;
@@ -19,81 +22,91 @@
             --nlb-color: #007a61;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
 
         body {
             background-color: var(--bg-color);
             display: flex; justify-content: center; align-items: center;
-            height: 100dvh; overflow: hidden; 
+            height: 100dvh; overflow: hidden; color: var(--text-color);
         }
 
         .app-container {
             width: 100%; max-width: 400px; height: 100dvh;
-            background-color: var(--bg-color);
+            background-color: var(--app-bg);
             display: flex; flex-direction: column; position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
         }
 
         /* --- Pages --- */
         .page {
             display: none; flex: 1; flex-direction: column;
             padding: 20px; overflow-y: auto; overflow-x: hidden;
-            padding-bottom: 90px; /* Space for nav */
+            padding-bottom: 90px;
         }
         .page.active { display: flex; }
         .page::-webkit-scrollbar { display: none; }
         .page { -ms-overflow-style: none; scrollbar-width: none; }
 
-        h1 { font-size: 24px; margin-bottom: 5px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        .sub-title { font-size: 14px; color: #fff; opacity: 0.9; margin-bottom: 20px;}
+        h1 { font-size: 28px; margin-bottom: 5px; font-weight: 800; letter-spacing: -0.5px; }
+        .sub-title { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
 
         /* --- Native Search Input --- */
-        .search-container {
-            display: flex; gap: 10px; margin-bottom: 20px; flex-shrink: 0;
-        }
+        .search-container { display: flex; gap: 10px; margin-bottom: 20px; flex-shrink: 0; }
         .search-container input {
-            flex: 1; padding: 15px; border-radius: 15px; border: none;
+            flex: 1; padding: 15px; border-radius: 12px; border: 1px solid #e0e0e0;
             font-size: 18px; font-weight: bold; text-transform: uppercase;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); outline: none;
+            background: #fff; outline: none; transition: border 0.2s;
         }
+        .search-container input:focus { border-color: var(--text-color); }
         .search-container button {
-            padding: 0 20px; border-radius: 15px; border: none;
-            background: var(--nav-bg); color: white; font-weight: bold;
-            font-size: 16px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 0 20px; border-radius: 12px; border: none;
+            background: var(--text-color); color: white; font-weight: bold;
+            font-size: 16px; cursor: pointer;
         }
 
-        /* --- Route Cards (Two Directions) --- */
+        /* --- Home List View --- */
+        .route-list { display: flex; flex-direction: column; gap: 10px; }
+        .route-list-item {
+            background: #fff; padding: 15px; border-radius: 12px;
+            display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid #f0f0f0;
+            cursor: pointer; transition: transform 0.1s, background 0.2s;
+        }
+        .route-list-item:active { transform: scale(0.98); background: #f8f9fa; }
+        .route-badge {
+            background: var(--text-color); color: #fff; font-weight: bold;
+            padding: 8px 12px; border-radius: 8px; min-width: 55px; text-align: center;
+        }
+        .route-info { flex: 1; }
+        .route-dest { font-size: 15px; font-weight: 600; }
+        .route-orig { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+        /* --- Route Cards (Search Results) --- */
         .route-card {
-            background: #fff; border-radius: 15px; padding: 12px;
-            margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            background: #fff; border-radius: 15px; padding: 15px;
+            margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
         }
         .route-header {
-            font-size: 20px; font-weight: bold; margin-bottom: 10px;
-            padding-bottom: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;
+            font-size: 22px; font-weight: 800; margin-bottom: 15px;
+            padding-bottom: 10px; border-bottom: 1px solid #eee; 
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .company-badge { font-size: 12px; padding: 4px 8px; border-radius: 8px; color: white; font-weight: bold;}
+        .company-badge { font-size: 12px; padding: 4px 10px; border-radius: 6px; color: white; font-weight: bold;}
         
         .direction-box {
-            padding: 12px; border-radius: 10px; margin-bottom: 8px;
+            padding: 15px; border-radius: 10px; margin-bottom: 10px;
             display: flex; justify-content: space-between; align-items: center;
             color: white; font-weight: bold;
         }
         .direction-box:last-child { margin-bottom: 0; }
-        .stop-name { font-size: 13px; font-weight: normal; opacity: 0.9; margin-top: 2px;}
-        .eta-time { font-size: 22px; text-align: right;}
+        .stop-name { font-size: 13px; font-weight: normal; opacity: 0.9; margin-top: 4px;}
+        .eta-time { font-size: 24px; text-align: right;}
 
         /* Company Backgrounds */
         .bg-kmb { background-color: var(--kmb-color); }
         .bg-ctb { background-color: var(--ctb-color); color: var(--ctb-text); }
         .bg-nlb { background-color: var(--nlb-color); }
-        .bg-joint { background: linear-gradient(135deg, var(--kmb-color) 50%, var(--ctb-color) 50%); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.1);}
-
-        /* Small route pills for Home Page */
-        .all-routes-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-        .route-pill { 
-            background: white; padding: 8px 12px; border-radius: 8px; 
-            font-weight: bold; font-size: 14px; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
 
         /* --- Navigation --- */
         .nav-container {
@@ -103,17 +116,18 @@
         .nav-bar {
             position: relative; background: var(--nav-bg); height: 70px;
             border-radius: 25px; display: flex; justify-content: space-around; align-items: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
         .nav-item {
             width: 60px; height: 60px; display: flex; justify-content: center; align-items: center;
             z-index: 2; cursor: pointer; color: #888; transition: 0.3s;
         }
-        .nav-item svg { width: 28px; height: 28px; fill: currentColor; }
+        .nav-item svg { width: 26px; height: 26px; fill: currentColor; }
         .nav-item.active { color: #fff; transform: translateY(-22px); }
         .indicator {
             position: absolute; top: -22px; width: 60px; height: 60px;
             background: var(--active-color); border-radius: 50%;
-            border: 8px solid var(--bg-color); transition: 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 1;
+            border: 8px solid var(--app-bg); transition: 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 1;
         }
     </style>
 </head>
@@ -122,36 +136,34 @@
 <div class="app-container">
     
     <div id="page-home" class="page active">
-        <h1>All Routes</h1>
-        <p class="sub-title">Directory of available services</p>
-        <div id="home-content">
-            <p style="color:white;">Loading route directory...</p>
+        <h1>Directory</h1>
+        <p class="sub-title">Select a route to view stations & ETAs</p>
+        <div id="home-content" class="route-list">
+            <p style="text-align:center; padding: 20px; color: var(--text-muted);">Loading routes...</p>
         </div>
     </div>
 
     <div id="page-search" class="page">
-        <h1>Search Route</h1>
-        <p class="sub-title">Enter route using system keyboard</p>
+        <h1>Station ETA</h1>
+        <p class="sub-title">Live arrivals by company</p>
         
         <div class="search-container">
-            <input type="text" id="routeInput" placeholder="e.g. 1A, 102, 3M" enterkeyhint="search">
-            <button onclick="executeSearch()">GO</button>
+            <input type="text" id="routeInput" placeholder="Route (e.g. 1, 112, 1A)" enterkeyhint="search">
+            <button onclick="executeSearch()">Find</button>
         </div>
         
         <div id="search-results">
-            <p style="text-align:center; color: white; opacity: 0.8; margin-top: 20px;">Results will appear here</p>
+            <p style="text-align:center; color: var(--text-muted); margin-top: 30px;">Search a route to see live data</p>
         </div>
     </div>
 
     <div id="page-settings" class="page">
         <h1>Settings</h1>
         <p class="sub-title">App Configuration</p>
-        <div class="route-card">
-            <p style="padding: 10px 0;"><strong>Background:</strong> Light Blue (128, 182, 255)</p>
+        <div class="route-card" style="background: #fff;">
+            <p style="padding: 10px 0; color: #333;"><strong>Theme:</strong> Clean White & Dark</p>
             <hr style="border:0; border-top:1px solid #eee;">
-            <p style="padding: 10px 0;"><strong>Keyboard:</strong> Native System UI</p>
-            <hr style="border:0; border-top:1px solid #eee;">
-            <p style="padding: 10px 0;"><strong>Save Data:</strong> Disabled</p>
+            <p style="padding: 10px 0; color: #333;"><strong>API Separation:</strong> Enabled (Prevents Route 1 conflict)</p>
         </div>
     </div>
 
@@ -175,66 +187,81 @@
 <script>
     // --- Navigation ---
     function switchPage(pageId, element) {
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => item.classList.remove('active'));
-        element.classList.add('active');
-        document.getElementById('indicator').style.left = `${element.offsetLeft}px`;
-
+        if(element) {
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+            document.getElementById('indicator').style.left = `${element.offsetLeft}px`;
+        }
         document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
         document.getElementById(`page-${pageId}`).classList.add('active');
     }
 
-    // --- On Load: Fetch All Routes for Home Page ---
+    // --- Open Route from List ---
+    function openRoute(routeNo) {
+        document.getElementById('routeInput').value = routeNo;
+        switchPage('search', document.querySelectorAll('.nav-item')[1]);
+        executeSearch();
+    }
+
+    // --- On Load: Fetch Routes for Vertical List ---
     window.onload = async () => {
         const activeItem = document.querySelector('.nav-item.active');
         document.getElementById('indicator').style.left = `${activeItem.offsetLeft}px`;
 
-        // Fetch general KMB route list to populate the "All Routes" page
         try {
             const res = await fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/');
             const data = await res.json();
             if(data && data.data) {
-                // Deduplicate route numbers
-                let uniqueRoutes = [...new Set(data.data.map(r => r.route))].slice(0, 100); // Show top 100 to prevent lag
-                document.getElementById('home-content').innerHTML = `
-                    <div class="all-routes-grid">
-                        ${uniqueRoutes.map(r => `<div class="route-pill">${r}</div>`).join('')}
+                // Deduplicate and render as a vertical list
+                let seen = new Set();
+                let uniqueRoutes = data.data.filter(r => {
+                    if (seen.has(r.route)) return false;
+                    seen.add(r.route);
+                    return true;
+                }).slice(0, 50); // Top 50 to prevent DOM lag
+
+                document.getElementById('home-content').innerHTML = uniqueRoutes.map(r => `
+                    <div class="route-list-item" onclick="openRoute('${r.route}')">
+                        <div class="route-badge">${r.route}</div>
+                        <div class="route-info">
+                            <div class="route-dest">To ${r.dest_tc}</div>
+                            <div class="route-orig">From ${r.orig_tc}</div>
+                        </div>
                     </div>
-                    <p style="text-align:center; margin-top:15px; color:white; font-size:12px;">Showing first 100 routes...</p>
-                `;
+                `).join('') + '<p style="text-align:center; padding: 20px; font-size:12px; color:#888;">Showing top 50 routes</p>';
             }
         } catch(e) {
-            document.getElementById('home-content').innerHTML = "<p style='color:white;'>Failed to load route directory.</p>";
+            document.getElementById('home-content').innerHTML = "<p style='text-align:center; color:red;'>Failed to load directory.</p>";
         }
 
-        // Add Enter key listener for the search bar
+        // Enter key listener
         document.getElementById('routeInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
-                document.activeElement.blur(); // Close keyboard
+                document.activeElement.blur();
                 executeSearch();
             }
         });
     };
 
-    // --- Complex API Search Logic (KMB, CTB, NLB) ---
+    // --- Search Logic (Separate Cards for Conflicting Routes) ---
     async function executeSearch() {
         const route = document.getElementById('routeInput').value.trim().toUpperCase();
         const resultsDiv = document.getElementById('search-results');
         
         if (!route) return;
 
-        resultsDiv.innerHTML = `<p style="text-align:center; color: white; font-weight:bold;">Searching all APIs...</p>`;
+        resultsDiv.innerHTML = `<p style="text-align:center; font-weight:bold; color: var(--text-color);">Fetching Live ETA...</p>`;
 
         try {
-            // 1. KMB Fetch
+            // Fetch KMB
             let kmbData = null;
             try {
-                let kmbRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${route}/1`);
-                let kmbJson = await kmbRes.json();
-                if (kmbJson.data && kmbJson.data.length > 0) kmbData = kmbJson.data;
+                let kmbRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${route}/1`).then(r=>r.json());
+                if (kmbRes.data && kmbRes.data.length > 0) kmbData = kmbRes.data;
             } catch(e) {}
 
-            // 2. CTB Fetch (Requires chained requests: Route -> Stops -> ETA)
+            // Fetch CTB
             let ctbData = null;
             try {
                 let ctbStopsOut = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${route}/outbound`).then(r => r.json());
@@ -253,9 +280,8 @@
                 }
             } catch(e) {}
 
-            // 3. NLB Fetch (Requires getting Route ID first)
+            // Fetch NLB
             let nlbData = null;
-            let nlbDestinations = {}; 
             try {
                 let nlbRoutes = await fetch(`https://rt.data.gov.hk/v2/transport/nlb/route.php?action=list`).then(r => r.json());
                 let matchedNlbRoute = nlbRoutes.routes.find(r => r.routeNo === route);
@@ -275,31 +301,16 @@
                 }
             } catch(e) {}
 
-            // Combine and evaluate results
-            let hasKmb = kmbData && kmbData.length > 0;
-            let hasCtb = ctbData && ctbData.length > 0;
-            let hasNlb = nlbData && nlbData.length > 0;
+            let finalHTML = "";
 
-            if (!hasKmb && !hasCtb && !hasNlb) {
-                resultsDiv.innerHTML = `<p style="text-align:center; color: white; background: rgba(0,0,0,0.2); padding:10px; border-radius:10px;">Route ${route} not found or no service currently.</p>`;
-                return;
-            }
+            // Helper function to build a card for a specific company
+            const buildCompanyCard = (dataList, companyClass, companyName) => {
+                if (!dataList || dataList.length === 0) return "";
 
-            // Determine Box Formatting
-            let companyClass = "bg-joint";
-            let companyName = "Joint Route";
-            
-            if (hasNlb) { companyClass = "bg-nlb"; companyName = "NLB"; }
-            else if (hasKmb && !hasCtb) { companyClass = "bg-kmb"; companyName = "KMB"; }
-            else if (!hasKmb && hasCtb) { companyClass = "bg-ctb"; companyName = "CTB"; }
-            else if (hasKmb && hasCtb) { companyClass = "bg-joint"; companyName = "KMB / CTB"; }
-
-            // Aggregate Data into Directions (Outbound vs Inbound)
-            let dir1 = { dest: "Unknown", eta: 999, stopName: "" };
-            let dir2 = { dest: "Unknown", eta: 999, stopName: "" };
-
-            const processData = (dataList) => {
+                let dir1 = { dest: "Unknown", eta: 999, stopName: "" };
+                let dir2 = { dest: "Unknown", eta: 999, stopName: "" };
                 const now = new Date();
+
                 dataList.forEach(item => {
                     if (!item.eta) return;
                     let etaTime = new Date(item.eta);
@@ -307,7 +318,7 @@
                     if (diffMins < 0) return;
 
                     let destName = item.dest_tc || item.dest_en || item.dest;
-                    let dirCode = item.dir || "O"; // Default to Outbound if API doesn't specify
+                    let dirCode = item.dir || "O"; 
 
                     if (dirCode === 'O') {
                         if (diffMins < dir1.eta) { dir1.eta = diffMins; dir1.dest = destName; dir1.stopName = "Nearest Station"; }
@@ -315,32 +326,35 @@
                         if (diffMins < dir2.eta) { dir2.eta = diffMins; dir2.dest = destName; dir2.stopName = "Nearest Station"; }
                     }
                 });
+
+                if (dir1.eta === 999 && dir2.eta === 999) return ""; // No active buses
+
+                let html = `
+                    <div class="route-card">
+                        <div class="route-header">
+                            <span>Route ${route}</span>
+                            <span class="company-badge ${companyClass}">${companyName}</span>
+                        </div>
+                `;
+                if (dir1.eta !== 999) html += createDirectionBox(dir1, companyClass);
+                if (dir2.eta !== 999) html += createDirectionBox(dir2, companyClass);
+                html += `</div>`;
+                return html;
             };
 
-            if (hasKmb) processData(kmbData);
-            if (hasCtb) processData(ctbData);
-            if (hasNlb) processData(nlbData);
+            // Build separate cards for each company (Solves the Route 1 conflict perfectly)
+            finalHTML += buildCompanyCard(kmbData, "bg-kmb", "KMB");
+            finalHTML += buildCompanyCard(ctbData, "bg-ctb", "CTB");
+            finalHTML += buildCompanyCard(nlbData, "bg-nlb", "NLB");
 
-            // Generate UI
-            let html = `
-                <div class="route-card">
-                    <div class="route-header">
-                        <span>Route ${route}</span>
-                        <span class="company-badge ${companyClass}">${companyName}</span>
-                    </div>
-            `;
-
-            if (dir1.eta !== 999) html += createDirectionBox(dir1, companyClass);
-            if (dir2.eta !== 999) html += createDirectionBox(dir2, companyClass);
-
-            html += `</div>`;
-            
-            // Render on SEARCH PAGE directly, overriding whatever was there
-            resultsDiv.innerHTML = html;
+            if (finalHTML === "") {
+                resultsDiv.innerHTML = `<p style="text-align:center; padding: 20px; background: #f8f9fa; border-radius: 12px; color: var(--text-muted);">Route ${route} not found or no active buses.</p>`;
+            } else {
+                resultsDiv.innerHTML = finalHTML;
+            }
 
         } catch (error) {
-            resultsDiv.innerHTML = `<p style="text-align:center; color: white;">Error processing data.</p>`;
-            console.error(error);
+            resultsDiv.innerHTML = `<p style="text-align:center; color: red;">Error processing data.</p>`;
         }
     }
 
