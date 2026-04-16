@@ -7,41 +7,21 @@
     
     <link rel="icon" type="image/png" href="AppIcon.png">
     <link rel="apple-touch-icon" href="AppIcon.png">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         :root {
-            --app-bg: #f2f2f6; 
-            --box-bg: #ffffff;
-            --text-main: #000000;
-            --text-muted: #8e8e93;
-            --border-color: #e5e5ea;
-            --kmb-red: #ed1d24;
-            --lwb-orange: #f39800;
-            --ctb-yellow: #fff200;
-            --ctb-blue: #00558e;
-            --nlb-green: #007a61;
+            --app-bg: #f2f2f6; --box-bg: #ffffff; --text-main: #000000;
+            --text-muted: #8e8e93; --border-color: #e5e5ea;
+            --kmb-red: #ed1d24; --lwb-orange: #f39800;
+            --ctb-yellow: #fff200; --ctb-blue: #00558e; --nlb-green: #007a61;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", sans-serif; }
+        body { background-color: #000; display: flex; justify-content: center; align-items: center; height: 100dvh; overflow: hidden; }
 
-        body {
-            background-color: #000; display: flex; justify-content: center; align-items: center;
-            height: 100dvh; overflow: hidden;
-        }
-
-        .app-container {
-            width: 100%; max-width: 500px; height: 100dvh;
-            background-color: var(--app-bg);
-            display: flex; flex-direction: column; position: relative;
-        }
-
-        /* --- Header --- */
-        .app-header {
-            background: var(--box-bg); padding: 55px 15px 15px 15px; 
-            border-bottom: 1px solid var(--border-color); flex-shrink: 0;
-        }
+        .app-container { width: 100%; max-width: 500px; height: 100dvh; background-color: var(--app-bg); display: flex; flex-direction: column; position: relative; }
+        .app-header { background: var(--box-bg); padding: 55px 15px 15px 15px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
         .app-header h1 { font-size: 26px; font-weight: 800; }
 
         .page { display: none; flex: 1; flex-direction: column; overflow: hidden; padding-bottom: 75px; }
@@ -50,19 +30,10 @@
         .scrollable-content { flex: 1; overflow-y: auto; padding: 10px; }
         .section-title { font-size: 18px; font-weight: 700; margin: 15px 5px 10px 5px; color: var(--text-main); }
 
-        /* --- Route Cards --- */
-        .route-item {
-            background: var(--box-bg); border-radius: 14px; padding: 15px;
-            display: flex; align-items: center; gap: 12px; cursor: pointer;
-            margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
+        .route-item { background: var(--box-bg); border-radius: 14px; padding: 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .route-item:active { background: #f2f2f2; }
         
-        .route-badge {
-            color: #fff; font-size: 17px; font-weight: 800;
-            padding: 8px 4px; border-radius: 10px; min-width: 65px; text-align: center;
-        }
-        
+        .route-badge { color: #fff; font-size: 17px; font-weight: 800; padding: 8px 4px; border-radius: 10px; min-width: 65px; text-align: center; }
         .badge-kmb { background-color: var(--kmb-red); }
         .badge-lwb { background-color: var(--lwb-orange); }
         .badge-ctb { background-color: var(--ctb-yellow); color: var(--ctb-blue); border: 1px solid #eee; }
@@ -72,27 +43,19 @@
         .route-dest { font-size: 15px; font-weight: 600; color: #333; }
         .route-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
-        /* --- Search Bar --- */
         .search-box { padding: 12px; background: var(--box-bg); border-bottom: 1px solid var(--border-color); }
-        .search-input-wrapper {
-            display: flex; background: #e9e9eb; border-radius: 10px; padding: 10px 12px; align-items: center;
-        }
-        .search-input-wrapper input {
-            flex: 1; border: none; background: transparent; font-size: 17px; outline: none; margin-left: 8px; text-transform: uppercase;
-        }
+        .search-input-wrapper { display: flex; background: #e9e9eb; border-radius: 10px; padding: 10px 12px; align-items: center; }
+        .search-input-wrapper input { flex: 1; border: none; background: transparent; font-size: 17px; outline: none; margin-left: 8px; text-transform: uppercase; }
 
-        /* --- Map & Details --- */
         #map { width: 100%; height: 35vh; flex-shrink: 0; }
         .back-bar { padding: 10px; background: white; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #eee; }
         .back-btn { background: #f2f2f2; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer; }
 
-        /* --- Bottom Nav --- */
-        .bottom-nav {
-            position: absolute; bottom: 0; width: 100%; height: 75px;
-            background: rgba(255, 255, 255, 0.92); border-top: 1px solid var(--border-color);
-            display: flex; justify-content: space-around; padding-bottom: 20px;
-            backdrop-filter: blur(20px); z-index: 100;
-        }
+        .stop-row { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; background: white; align-items: center; }
+        .stop-name { font-weight: 500; font-size: 14px; flex: 1; padding-right: 10px; }
+        .stop-eta { font-weight: 700; font-size: 15px; white-space: nowrap; }
+
+        .bottom-nav { position: absolute; bottom: 0; width: 100%; height: 75px; background: rgba(255, 255, 255, 0.92); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding-bottom: 20px; backdrop-filter: blur(20px); z-index: 100; }
         .nav-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); flex: 1; cursor: pointer; }
         .nav-tab.active { color: var(--kmb-red); }
         .nav-tab svg { width: 26px; height: 26px; fill: currentColor; }
@@ -138,12 +101,10 @@
 
     <div class="bottom-nav">
         <div class="nav-tab active" id="tab-home" onclick="showPage('home')">
-            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            <span>Home</span>
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span>
         </div>
         <div class="nav-tab" id="tab-search" onclick="showPage('search')">
-            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <span>Search</span>
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>Search</span>
         </div>
     </div>
 </div>
@@ -152,6 +113,7 @@
 <script>
     let allRoutesStore = [];
     let map = null;
+    let currentEtaToken = 0; 
 
     function showPage(id) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -160,10 +122,8 @@
         if(id !== 'details') document.getElementById('tab-' + id).classList.add('active');
     }
 
-    // --- Bulletproof Route Loader ---
     async function loadDatabase() {
         try {
-            // Updated to the NEW Data.gov.hk V2 APIs!
             const fetchKMB = fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/').then(r => r.json());
             const fetchCTB = fetch('https://rt.data.gov.hk/v2/transport/citybus/route/ctb').then(r => r.json());
             const fetchNLB = fetch('https://rt.data.gov.hk/v2/transport/nlb/route.php?action=list').then(r => r.json());
@@ -171,58 +131,52 @@
             const results = await Promise.allSettled([fetchKMB, fetchCTB, fetchNLB]);
             const [kmbRes, ctbRes, nlbRes] = results;
 
-            // Load KMB/LWB with safety checks
             if (kmbRes.status === 'fulfilled' && kmbRes.value?.data) {
                 kmbRes.value.data.forEach(r => {
                     if(!r.route) return;
                     const isLWB = ['A','E','NA','R','S','X'].some(p => r.route.startsWith(p));
-                    allRoutesStore.push({ no: r.route, dest: r.dest_tc || "Unknown", orig: r.orig_tc || "Unknown", co: 'KMB/LWB', badge: isLWB ? 'badge-lwb' : 'badge-kmb', dir: r.bound || '1' });
+                    allRoutesStore.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'KMB/LWB', badge: isLWB ? 'badge-lwb' : 'badge-kmb', dir: r.bound || 'I' });
                 });
             }
 
-            // Load CTB with safety checks
             if (ctbRes.status === 'fulfilled' && ctbRes.value?.data) {
                 ctbRes.value.data.forEach(r => {
                     if(!r.route) return;
-                    allRoutesStore.push({ no: r.route, dest: r.dest_tc || "Unknown", orig: r.orig_tc || "Unknown", co: 'CTB', badge: 'badge-ctb', dir: r.dir || 'inward' });
+                    allRoutesStore.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: r.dir || 'inbound' });
                 });
             }
 
-            // Load NLB with safety checks (Fixed routeName_c error)
             if (nlbRes.status === 'fulfilled' && nlbRes.value?.routes) {
                 nlbRes.value.routes.forEach(r => {
                     if(!r.routeNo) return;
-                    // NLB changed their API property from routeName_tc to routeName_c!
-                    const rawName = r.routeName_c || r.routeName_tc || r.routeName_e || "Unknown>Unknown";
+                    const rawName = r.routeName_c || r.routeName_tc || "Unknown>Unknown";
                     const nameParts = rawName.split('>');
-                    const dest = nameParts[1] || nameParts[0] || "Unknown";
-                    const orig = nameParts[0] || "Unknown";
-                    
-                    allRoutesStore.push({ no: r.routeNo, dest: dest, orig: orig, co: 'NLB', badge: 'badge-nlb', dir: '1' });
+                    // NLB uses hidden routeIds to get stations! Saved here:
+                    allRoutesStore.push({ no: r.routeNo, dest: nameParts[1] || nameParts[0], orig: nameParts[0], co: 'NLB', badge: 'badge-nlb', dir: '1', routeId: r.routeId });
                 });
             }
 
-            // Populate "All Routes" on home
             const allList = document.getElementById('all-routes-list');
             if (allRoutesStore.length > 0) {
-                allList.innerHTML = allRoutesStore.slice(0, 50).map(r => renderItem(r)).join('');
+                // FIXED 5R BUG: Safely passing array index instead of strings
+                allList.innerHTML = allRoutesStore.map((r, i) => renderItem(r, i)).join('');
             } else {
-                allList.innerHTML = '<p style="padding:10px; color:red;">Failed to fetch from government APIs.</p>';
+                allList.innerHTML = '<p style="padding:10px; color:red;">Failed to fetch APIs.</p>';
             }
 
         } catch (e) {
-            console.error("Database failed", e);
             document.getElementById('all-routes-list').innerHTML = '<p style="padding:10px; color:red;">System Error. ' + e.message + '</p>';
         }
     }
 
-    function renderItem(r) {
+    // FIXED: Now uses safe index lookup
+    function renderItem(r, index) {
         return `
-            <div class="route-item" onclick="openDetails('${r.no}', '${r.co}', '${r.dir}', '${r.dest}')">
+            <div class="route-item" onclick="openRoute(${index})">
                 <div class="route-badge ${r.badge}">${r.no}</div>
                 <div class="route-info">
-                    <div class="route-dest">往 ${r.dest}</div>
-                    <div class="route-sub">${r.co} • 由 ${r.orig}</div>
+                    <div class="route-dest">往 ${r.dest || 'Unknown'}</div>
+                    <div class="route-sub">${r.co} • 由 ${r.orig || 'Unknown'}</div>
                 </div>
             </div>`;
     }
@@ -231,31 +185,37 @@
         const query = document.getElementById('searchInput').value.toUpperCase().trim();
         const results = document.getElementById('search-results');
         if(!query) return;
-
-        const filtered = allRoutesStore.filter(r => r.no === query);
-        results.innerHTML = filtered.length ? filtered.map(r => renderItem(r)).join('') : '<p style="text-align:center; padding:20px;">No results found.</p>';
+        
+        // Fix search mapping to pass correct index
+        const filteredHTML = allRoutesStore.map((r, index) => {
+            if (r.no === query) return renderItem(r, index);
+            return '';
+        }).join('');
+        
+        results.innerHTML = filteredHTML || '<p style="text-align:center; padding:20px;">No results found.</p>';
     }
 
-    // --- GPS Nearby Logic ---
+    function openRoute(index) {
+        const r = allRoutesStore[index];
+        openDetails(r.no, r.co, r.dir, r.dest, r.routeId);
+    }
+
     async function initNearby(lat, lon) {
         const nearbyDiv = document.getElementById('nearby-list');
-        try {
-            if(allRoutesStore.length > 0) {
-                 nearbyDiv.innerHTML = `<p style="font-size:12px; color:#888; padding: 5px;">GPS Active</p>` + 
-                                       allRoutesStore.slice(10, 15).map(r => renderItem(r)).join('');
-            } else {
-                 nearbyDiv.innerHTML = '<p style="padding:10px; color:#888;">Routes not loaded yet.</p>';
-            }
-        } catch (e) {
-            nearbyDiv.innerHTML = '<p>GPS data unavailable.</p>';
+        if(allRoutesStore.length > 0) {
+             nearbyDiv.innerHTML = `<p style="font-size:12px; color:#888; padding: 5px;">GPS Active</p>` + allRoutesStore.slice(10, 15).map((r, i) => renderItem(r, i+10)).join('');
         }
     }
 
-    async function openDetails(no, co, dir, dest) {
+    // --- UPGRADED ETA ENGINE (Fixed CTB & NLB) ---
+    async function openDetails(no, co, dir, dest, routeId) {
         showPage('details');
-        document.getElementById('details-title').innerText = `${no} 往 ${dest}`;
+        document.getElementById('details-title').innerText = `${no} 往 ${dest || 'Unknown'}`;
         const list = document.getElementById('details-list');
-        list.innerHTML = '<p style="padding:20px;">Fetching Live ETA...</p>';
+        list.innerHTML = '<p style="padding:20px; text-align:center; color:#888;">Initializing Live ETA...</p>';
+
+        currentEtaToken++; 
+        const myToken = currentEtaToken;
 
         if(!map) {
             map = L.map('map', {zoomControl: false}).setView([22.35, 114.1], 11);
@@ -263,37 +223,133 @@
         }
 
         try {
-            if(co === 'KMB/LWB') {
-                const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${no}/1`);
-                const data = await res.json();
-                list.innerHTML = data.data.slice(0, 12).map(e => `
-                    <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; background:white;">
-                        <span style="font-weight:500;">${e.dest_tc}</span>
-                        <b style="color:var(--kmb-red)">${e.eta ? Math.round((new Date(e.eta)-new Date())/60000)+' min' : '---'}</b>
-                    </div>
-                `).join('');
-            } else {
-                list.innerHTML = `<p style="padding:20px; color:#888;">Live ETA for ${co} requires fetching specific company endpoints.</p>`;
+            if (co === 'KMB/LWB') {
+                let isOutbound = String(dir).toUpperCase().startsWith('O');
+                let dirWord = isOutbound ? 'outbound' : 'inbound';
+                let dirLetter = isOutbound ? 'O' : 'I';
+
+                let stopsRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${dirWord}/1`);
+                let stopsData = await stopsRes.json();
+                let stops = stopsData.data || [];
+
+                // Smart Fallback
+                if (stops.length === 0) {
+                    dirWord = dirWord === 'outbound' ? 'inbound' : 'outbound';
+                    dirLetter = dirLetter === 'O' ? 'I' : 'O';
+                    stopsRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${dirWord}/1`);
+                    stopsData = await stopsRes.json();
+                    stops = stopsData.data || [];
+                }
+
+                const etaRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${no}/1`);
+                const etaData = await etaRes.json();
+                const allEtas = etaData.data || [];
+
+                list.innerHTML = stops.map(s => `<div id="row-${myToken}-${s.seq}" class="stop-row"><span class="stop-name" style="color:#aaa;">Loading Stop ${s.seq}...</span><b class="stop-eta" style="color:#aaa;">--</b></div>`).join('');
+
+                for (const s of stops) {
+                    if (currentEtaToken !== myToken) break;
+                    try {
+                        const nameRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop/${s.stop}`);
+                        const nameData = await nameRes.json();
+                        const stopName = nameData.data.name_tc;
+
+                        const stopEtas = allEtas.filter(e => e.seq === s.seq && e.dir === dirLetter && e.eta);
+                        let etaText = 'No ETA';
+                        if (stopEtas.length > 0) {
+                            const min = Math.round((new Date(stopEtas[0].eta) - new Date()) / 60000);
+                            etaText = min > 0 ? min + ' min' : 'Arriving';
+                        }
+                        const row = document.getElementById(`row-${myToken}-${s.seq}`);
+                        if(row) row.innerHTML = `<span class="stop-name">${s.seq}. ${stopName}</span><b class="stop-eta" style="color:var(--kmb-red)">${etaText}</b>`;
+                    } catch(err) {}
+                }
+
+            } else if (co === 'CTB') {
+                // FIXED: Tries Outbound first, auto-switches to Inbound if route is circular
+                let dirWord = 'outbound';
+                let stopsRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${dirWord}`);
+                let stopsData = await stopsRes.json();
+                let stops = stopsData.data || [];
+
+                if (stops.length === 0) {
+                    dirWord = 'inbound';
+                    stopsRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${dirWord}`);
+                    stopsData = await stopsRes.json();
+                    stops = stopsData.data || [];
+                }
+
+                list.innerHTML = stops.map((s, i) => `<div id="row-${myToken}-${i}" class="stop-row"><span class="stop-name" style="color:#aaa;">Loading Stop...</span><b class="stop-eta" style="color:#aaa;">--</b></div>`).join('');
+
+                for (let i = 0; i < stops.length; i++) {
+                    if (currentEtaToken !== myToken) break;
+                    const s = stops[i];
+                    try {
+                        const nameRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/stop/${s.stop}`);
+                        const nameData = await nameRes.json();
+                        const stopName = nameData.data.name_tc;
+
+                        const etaRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${s.stop}/${no}`);
+                        const etaData = await etaRes.json();
+                        // FIXED: Citybus ETA returns "I" or "O", not "inbound"
+                        const etas = (etaData.data || []).filter(e => e.dir === (dirWord === 'outbound' ? 'O' : 'I') && e.eta);
+                        
+                        let etaText = 'No ETA';
+                        if (etas.length > 0) {
+                            const min = Math.round((new Date(etas[0].eta) - new Date()) / 60000);
+                            etaText = min > 0 ? min + ' min' : 'Arriving';
+                        }
+                        const row = document.getElementById(`row-${myToken}-${i}`);
+                        if(row) row.innerHTML = `<span class="stop-name">${i+1}. ${stopName}</span><b class="stop-eta" style="color:var(--ctb-blue)">${etaText}</b>`;
+                    } catch(err) {}
+                }
+
+            } else if (co === 'NLB') {
+                // FIXED: Fully implemented NLB Engine via hidden routeId!
+                const stopsRes = await fetch(`https://rt.data.gov.hk/v2/transport/nlb/stop.php?action=list&routeId=${routeId}`);
+                const stopsData = await stopsRes.json();
+                const stops = stopsData.stops || [];
+
+                list.innerHTML = stops.map((s, i) => `<div id="row-${myToken}-${i}" class="stop-row"><span class="stop-name" style="color:#aaa;">Loading...</span><b class="stop-eta" style="color:#aaa;">--</b></div>`).join('');
+
+                for (let i = 0; i < stops.length; i++) {
+                    if (currentEtaToken !== myToken) break;
+                    const s = stops[i];
+                    try {
+                        const stopName = s.stopName_c || s.stopName_tc || "Unknown";
+                        const etaRes = await fetch(`https://rt.data.gov.hk/v2/transport/nlb/eta.php?action=list&routeId=${routeId}&stopId=${s.stopId}`);
+                        const etaData = await etaRes.json();
+                        const etas = etaData.estimatedArrivals || [];
+                        
+                        let etaText = 'No ETA';
+                        if (etas.length > 0) {
+                            // NLB returns standard datetime: "2026-04-16 19:30:00"
+                            const etaTime = new Date(etas[0].estimatedArrivalTime.replace(' ', 'T') + '+08:00'); 
+                            const min = Math.round((etaTime - new Date()) / 60000);
+                            etaText = min > 0 ? min + ' min' : (min <= 0 ? 'Arriving' : 'No ETA');
+                        }
+
+                        const row = document.getElementById(`row-${myToken}-${i}`);
+                        if(row) row.innerHTML = `<span class="stop-name">${i+1}. ${stopName}</span><b class="stop-eta" style="color:var(--nlb-green)">${etaText}</b>`;
+                    } catch(err) {}
+                }
             }
-        } catch(e) { list.innerHTML = '<p style="padding:20px; color:red;">Error loading ETA</p>'; }
+        } catch(e) {
+            list.innerHTML = '<p style="padding:20px; color:red; text-align:center;">Network error while fetching Live ETA.</p>';
+        }
     }
 
-    // --- Listeners ---
     document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if(e.key === 'Enter') {
-            performSearch();
-            e.target.blur();
-        }
+        if(e.key === 'Enter') { performSearch(); e.target.blur(); }
     });
 
     window.onload = () => {
         loadDatabase();
         navigator.geolocation.getCurrentPosition(
             p => setTimeout(() => initNearby(p.coords.latitude, p.coords.longitude), 1000), 
-            e => { document.getElementById('nearby-list').innerHTML = '<p style="font-size:12px; color:#888; padding:10px;">Location access denied.</p>'; }
+            e => {} 
         );
     };
 </script>
-
 </body>
 </html>
