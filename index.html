@@ -71,7 +71,6 @@
         .route-info { flex: 1; }
         .route-dest { font-size: 15px; font-weight: 600; color: #333; }
         .route-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-        .nearby-tag { font-size: 11px; color: var(--kmb-red); font-weight: bold; margin-top: 4px; display: block;}
 
         /* --- Search Bar --- */
         .search-box { padding: 12px; background: var(--box-bg); border-bottom: 1px solid var(--border-color); }
@@ -79,7 +78,7 @@
             display: flex; background: #e9e9eb; border-radius: 10px; padding: 10px 12px; align-items: center;
         }
         .search-input-wrapper input {
-            flex: 1; border: none; background: transparent; font-size: 17px; outline: none; margin-left: 8px;
+            flex: 1; border: none; background: transparent; font-size: 17px; outline: none; margin-left: 8px; text-transform: uppercase;
         }
 
         /* --- Map & Details --- */
@@ -161,32 +160,51 @@
         if(id !== 'details') document.getElementById('tab-' + id).classList.add('active');
     }
 
-    // --- Optimized Route Loader (Fixes Search Errors) ---
+    // --- Resilient Route Loader (Fixes the Stuck Loading issue) ---
     async function loadDatabase() {
         try {
-            const [kmb, ctb, nlb] = await Promise.all([
-                fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route/`).then(r => r.json()),
-                fetch(`https://rt.data.gov.hk/v1/transport/citybus/route/ctb`).then(r => r.json()),
-                fetch(`https://rt.data.gov.hk/v1/transport/nlb/route`).then(r => r.json())
-            ]);
+            // We use Promise.allSettled so if ONE fails, the rest still load!
+            const fetchKMB = fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/').then(r => r.json());
+            const fetchCTB = fetch('https://rt.data.gov.hk/v1/transport/citybus-nwfb/route/ctb').then(r => r.json());
+            const fetchNLB = fetch('https://rt.data.gov.hk/v1/transport/nlb/route.php?action=list').then(r => r.json());
 
-            // Combine and format
-            kmb.data.forEach(r => {
-                const isLWB = ['A','E','NA','R','S','X'].some(p => r.route.startsWith(p));
-                allRoutesStore.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'KMB/LWB', badge: isLWB ? 'badge-lwb' : 'badge-kmb', dir: r.bound });
-            });
-            ctb.data.forEach(r => {
-                allRoutesStore.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: r.dir });
-            });
-            nlb.routes.forEach(r => {
-                allRoutesStore.push({ no: r.routeNo, dest: r.routeName_tc.split('>')[1] || r.routeName_tc, orig: r.routeName_tc.split('>')[0], co: 'NLB', badge: 'badge-nlb', dir: '1' });
-            });
+            const results = await Promise.allSettled([fetchKMB, fetchCTB, fetchNLB]);
+
+            const [kmbRes, ctbRes, nlbRes] = results;
+
+            // Load KMB/LWB if successful
+            if (kmbRes.status === 'fulfilled' && kmbRes.value.data) {
+                kmbRes.value.data.forEach(r => {
+                    const isLWB = ['A','E','NA','R','S','X'].some(p => r.route.startsWith(p));
+                    allRoutesStore.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'KMB/LWB', badge: isLWB ? 'badge-lwb' : 'badge-kmb', dir: r.bound });
+                });
+            }
+
+            // Load CTB if successful
+            if (ctbRes.status === 'fulfilled' && ctbRes.value.data) {
+                ctbRes.value.data.forEach(r => {
+                    allRoutesStore.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: r.dir });
+                });
+            }
+
+            // Load NLB if successful
+            if (nlbRes.status === 'fulfilled' && nlbRes.value.routes) {
+                nlbRes.value.routes.forEach(r => {
+                    allRoutesStore.push({ no: r.routeNo, dest: r.routeName_tc.split('>')[1] || r.routeName_tc, orig: r.routeName_tc.split('>')[0], co: 'NLB', badge: 'badge-nlb', dir: '1' });
+                });
+            }
 
             // Populate "All Routes" on home
             const allList = document.getElementById('all-routes-list');
-            allList.innerHTML = allRoutesStore.slice(0, 50).map(r => renderItem(r)).join('');
+            if (allRoutesStore.length > 0) {
+                allList.innerHTML = allRoutesStore.slice(0, 50).map(r => renderItem(r)).join('');
+            } else {
+                allList.innerHTML = '<p style="padding:10px; color:red;">Failed to connect to government servers. Please check your internet.</p>';
+            }
+
         } catch (e) {
             console.error("Database failed", e);
+            document.getElementById('all-routes-list').innerHTML = '<p style="padding:10px; color:red;">System Error. Please refresh the page.</p>';
         }
     }
 
@@ -214,13 +232,13 @@
     async function initNearby(lat, lon) {
         const nearbyDiv = document.getElementById('nearby-list');
         try {
-            // Fetch KMB stops to find closest one (simplified demo)
-            const stopsRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop`);
-            const stops = await stopsRes.json();
-            
-            // Just pick one for demo speed or calculate distance
-            nearbyDiv.innerHTML = `<p style="font-size:12px; color:#888;">Displaying top matches near your coordinates...</p>` + 
-                                  allRoutesStore.slice(10, 15).map(r => renderItem(r)).join('');
+            // Quick fallback text for nearby routes (expand this later with real coordinates logic)
+            if(allRoutesStore.length > 0) {
+                 nearbyDiv.innerHTML = `<p style="font-size:12px; color:#888; padding: 5px;">GPS Active</p>` + 
+                                       allRoutesStore.slice(10, 15).map(r => renderItem(r)).join('');
+            } else {
+                 nearbyDiv.innerHTML = '<p style="padding:10px; color:#888;">Routes not loaded yet.</p>';
+            }
         } catch (e) {
             nearbyDiv.innerHTML = '<p>GPS data unavailable.</p>';
         }
@@ -248,9 +266,9 @@
                     </div>
                 `).join('');
             } else {
-                list.innerHTML = `<p style="padding:20px; color:#888;">ETA for ${co} is currently restricted by provider.</p>`;
+                list.innerHTML = `<p style="padding:20px; color:#888;">Live ETA for ${co} requires fetching specific company endpoints.</p>`;
             }
-        } catch(e) { list.innerHTML = 'Error loading ETA'; }
+        } catch(e) { list.innerHTML = '<p style="padding:20px; color:red;">Error loading ETA</p>'; }
     }
 
     // --- Listeners ---
@@ -264,8 +282,8 @@
     window.onload = () => {
         loadDatabase();
         navigator.geolocation.getCurrentPosition(
-            p => initNearby(p.coords.latitude, p.coords.longitude),
-            e => { document.getElementById('nearby-list').innerHTML = '<p style="font-size:12px; color:#888;">Location access denied.</p>'; }
+            p => setTimeout(() => initNearby(p.coords.latitude, p.coords.longitude), 1000), // Delay slightly so routes store is populated
+            e => { document.getElementById('nearby-list').innerHTML = '<p style="font-size:12px; color:#888; padding:10px;">Location access denied.</p>'; }
         );
     };
 </script>
