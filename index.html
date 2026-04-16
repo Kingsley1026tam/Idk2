@@ -49,7 +49,6 @@
         .route-dest { font-size: 15px; font-weight: 600; color: #333; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
         .route-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
         
-        /* Special Route Badge Styling */
         .sp-badge { font-size: 10px; background-color: #ffe5e5; color: var(--kmb-red); padding: 2px 6px; border-radius: 6px; font-weight: 700; border: 1px solid #ffcccc; white-space: nowrap; }
 
         .search-box { padding: 12px; background: var(--box-bg); border-bottom: 1px solid var(--border-color); }
@@ -83,7 +82,7 @@
         <div class="app-header"><h1>香港巴士</h1></div>
         <div class="scrollable-content">
             <h2 class="section-title">已儲存</h2>
-            <div id="nearby-list"><p style="padding:10px; color:#888; font-size: 13px;">暫無已儲存路線。請開啟路線並點擊「儲存」！</p></div>
+            <div id="nearby-list"><p style="padding:10px; color:#888; font-size: 13px;">暫無已儲存路線。請開啟路線並點擊「儲存」。</p></div>
             
             <h2 class="section-title">全部</h2>
             <div id="all-routes-list"><p style="padding:10px; color:#888;">載入路線資料庫中...</p></div>
@@ -154,7 +153,6 @@
                 kmbRes.value.data.forEach(r => {
                     if(!r.route) return;
                     const isLWB = ['A','E','NA','R','S','X'].some(p => r.route.startsWith(p));
-                    // Added isSp detection
                     const sType = r.service_type || '1';
                     const isSp = sType !== '1';
                     allRoutesStore.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'KMB/LWB', badge: isLWB ? 'badge-lwb' : 'badge-kmb', dir: r.bound || 'I', serviceType: sType, isSp: isSp });
@@ -191,7 +189,6 @@
     }
 
     function renderItem(r, index) {
-        // Special badge HTML
         const spBadge = r.isSp ? '<span class="sp-badge">特別班次</span>' : '';
         return `
             <div class="route-item" onclick="openRoute(${index})">
@@ -226,7 +223,7 @@
         if(favHTML) {
             list.innerHTML = favHTML;
         } else {
-            list.innerHTML = '<p style="padding:10px; color:#888; font-size: 13px;">暫無已儲存路線。請開啟路線並點擊「儲存」！</p>';
+            list.innerHTML = '<p style="padding:10px; color:#888; font-size: 13px;">暫無已儲存路線。請開啟路線並點擊「儲存」。</p>';
         }
     }
 
@@ -240,7 +237,7 @@
             btn.style.background = "#f2f2f2";
         } else {
             favorites.push(currentRouteIndex);
-            btn.innerText = "已儲存 ⭐";
+            btn.innerText = "已儲存";
             btn.style.background = "#fff200";
         }
         localStorage.setItem('hkbus_favs', JSON.stringify(favorites));
@@ -252,7 +249,7 @@
         
         const btn = document.getElementById('fav-btn');
         if(favorites.includes(index)) {
-            btn.innerText = "已儲存 ⭐"; btn.style.background = "#fff200";
+            btn.innerText = "已儲存"; btn.style.background = "#fff200";
         } else {
             btn.innerText = "儲存"; btn.style.background = "#f2f2f2";
         }
