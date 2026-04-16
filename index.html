@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#f2f2f6">
@@ -15,8 +14,9 @@
         :root {
             --app-bg: #f2f2f6; --box-bg: #ffffff; --text-main: #000000;
             --text-muted: #8e8e93; --border-color: #e5e5ea;
-            --kmb-red: #d0202e; --lwb-orange: #f39800; /* Adjusted KMB red to match iOS style */
+            --kmb-red: #d0202e; --lwb-orange: #f39800; 
             --ctb-yellow: #fff200; --ctb-blue: #00558e; --nlb-green: #007a61;
+            --highlight-blue: #007aff;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -49,7 +49,6 @@
         
         .sp-badge { font-size: 10px; background-color: #ffe5e5; color: var(--kmb-red); padding: 2px 6px; border-radius: 6px; font-weight: 700; border: 1px solid #ffcccc; white-space: nowrap; }
         
-        /* New Right Aligned ETA Style */
         .route-right { min-width: 60px; text-align: right; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; }
         .nearest-eta { font-size: 20px; font-weight: 800; color: var(--text-muted); }
         .nearest-eta.has-time { color: var(--kmb-red); }
@@ -68,14 +67,14 @@
         .fav-btn { background: #f2f2f2; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: 0.2s;}
 
         .stop-container { background: white; border-bottom: 1px solid #eee; }
-        .stop-row { padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .stop-row { padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
         .stop-row:active { background: #f9f9f9; }
         .stop-name { font-weight: 500; font-size: 15px; flex: 1; padding-right: 10px; color: #000; }
         .stop-eta { font-weight: 700; font-size: 15px; white-space: nowrap; }
         
         .stop-details { display: none; padding: 0 15px 15px 15px; font-size: 13px; color: #555; background: white; }
         .stop-container.expanded .stop-details { display: block; }
-        .stop-container.expanded .stop-row { padding-bottom: 8px; }
+        .stop-container.expanded .stop-row { padding-bottom: 8px; background: #fdfdfd; }
         .eta-line { display: flex; margin-top: 6px; padding-left: 20px; border-left: 2px solid var(--border-color); }
         .eta-line.first { color: var(--kmb-red); font-weight: 600; border-left-color: var(--kmb-red); }
 
@@ -84,6 +83,10 @@
         .nav-tab.active { color: var(--kmb-red); }
         .nav-tab svg { width: 26px; height: 26px; fill: currentColor; }
         .nav-tab span { font-size: 10px; margin-top: 4px; font-weight: 600; }
+
+        /* Custom pulsing marker for highlighted stop */
+        .pulse-icon { width: 20px; height: 20px; background: var(--highlight-blue); border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 rgba(0, 122, 255, 0.4); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); } }
     </style>
 </head>
 <body>
@@ -95,9 +98,6 @@
         <div class="scrollable-content">
             <h2 class="section-title">已儲存</h2>
             <div id="nearby-list"><p style="padding:10px; color:#888; font-size: 14px;">暫無已儲存路線。請搜尋路線並點擊儲存。</p></div>
-            
-            <h2 class="section-title">全部</h2>
-            <div id="all-routes-list"><p style="padding:10px; color:#888;">載入路線資料庫中...</p></div>
         </div>
     </div>
 
@@ -106,17 +106,17 @@
         <div class="search-box">
             <div class="search-input-wrapper">
                 <svg viewBox="0 0 24 24" width="18" fill="#8e8e93"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="searchInput" placeholder="搜尋路線" autocomplete="off">
+                <input type="text" id="searchInput" placeholder="搜尋路線 (例如 619)" autocomplete="off">
             </div>
         </div>
         <div class="scrollable-content" id="search-results">
-            <p style="text-align:center; padding: 40px; color: #888;">輸入路線號碼並按 Enter 搜尋</p>
+            <p style="padding:10px; color:#888;">載入路線資料庫中...</p>
         </div>
     </div>
 
     <div id="page-details" class="page">
         <div class="back-bar">
-            <button class="back-btn" onclick="showPage('home')">
+            <button class="back-btn" onclick="showPage('search')">
                 <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg> 返回
             </button>
             <div id="details-title" style="font-weight:700; font-size:15px;"></div>
@@ -131,7 +131,7 @@
             <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>首頁</span>
         </div>
         <div class="nav-tab" id="tab-search" onclick="showPage('search')">
-            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>搜尋</span>
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>搜尋 / 全部</span>
         </div>
     </div>
 </div>
@@ -142,12 +142,12 @@
     let map = null;
     let mapPolyline = null;
     let mapMarkersGroup = null;
+    let mapHighlightMarker = null; // Specially for pointing out the opened station
     let currentEtaToken = 0; 
     let currentRouteIndex = -1;
     let favorites = JSON.parse(localStorage.getItem('hkbus_favs')) || [];
     let userLoc = null;
 
-    // Haversine distance
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3; 
         const φ1 = lat1 * Math.PI/180;
@@ -171,15 +171,17 @@
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
         document.getElementById('page-' + id).classList.add('active');
-        if(id !== 'details') document.getElementById('tab-' + id).classList.add('active');
+        if(id !== 'details') {
+            document.getElementById('tab-' + id).classList.add('active');
+        }
+        
         if(id === 'home') renderFavorites();
+        if(id === 'search') performSearch(); // Ensure search page shows content
     }
 
-    // Fixed Date Parsing to prevent NaN:NaN
     function parseEtaToText(etaStr) {
         if(!etaStr) return { min: -1, text: '未有資料' };
         
-        // Use native date parsing for ISO 8601 instead of replace hack
         const etaTime = new Date(etaStr);
         if(isNaN(etaTime)) return { min: -1, text: '未有資料' };
 
@@ -226,15 +228,14 @@
                 });
             }
 
-            const allList = document.getElementById('all-routes-list');
             if (allRoutesStore.length > 0) {
-                allList.innerHTML = allRoutesStore.map((r, i) => renderItem(r, i)).join('');
                 initLocation();
+                performSearch(); // Populate search page with all routes initially
             } else {
-                allList.innerHTML = '<p style="padding:10px; color:red;">無法獲取 API 資料。</p>';
+                document.getElementById('search-results').innerHTML = '<p style="padding:10px; color:red;">無法獲取 API 資料。</p>';
             }
         } catch (e) {
-            document.getElementById('all-routes-list').innerHTML = '<p style="padding:10px; color:red;">系統發生錯誤。</p>';
+            document.getElementById('search-results').innerHTML = '<p style="padding:10px; color:red;">系統發生錯誤。</p>';
         }
     }
 
@@ -266,18 +267,29 @@
             </div>`;
     }
 
+    // UPDATED: Search function with partial match (includes)
     function performSearch() {
         const query = document.getElementById('searchInput').value.toUpperCase().trim();
         const results = document.getElementById('search-results');
-        if(!query) return;
         
-        const filteredHTML = allRoutesStore.map((r, index) => {
-            if (r.no === query) return renderItem(r, index, false);
-            return '';
-        }).join('');
+        if(!query) {
+            // When empty, show all routes (limited to first 100 for performance to avoid lag)
+            const allHTML = allRoutesStore.slice(0, 100).map((r) => renderItem(r, allRoutesStore.indexOf(r), false)).join('');
+            results.innerHTML = `<h2 class="section-title">所有路線</h2>` + allHTML;
+            return;
+        }
         
-        results.innerHTML = filteredHTML || '<p style="text-align:center; padding:20px; color: #888;">找不到相關路線。</p>';
+        // Filter by partial match (includes)
+        const filteredHTML = allRoutesStore
+            .filter(r => r.no.includes(query))
+            .map((r) => renderItem(r, allRoutesStore.indexOf(r), false))
+            .join('');
+            
+        results.innerHTML = filteredHTML || '<p style="text-align:center; padding:20px; color: #888;">找不到包含此字眼的路線。</p>';
     }
+
+    // Attach input event for instant search
+    document.getElementById('searchInput').addEventListener('input', performSearch);
 
     async function processNearestFav(r, index) {
         const valEl = document.getElementById(`fav-nearest-val-${index}`);
@@ -393,6 +405,43 @@
         openDetails(r.no, r.co, r.dir, r.dest, r.routeId, r.serviceType);
     }
 
+    // UPDATED: Accordion toggle and Map Marker function
+    window.toggleStop = function(element, lat, lng) {
+        const isCurrentlyExpanded = element.classList.contains('expanded');
+        
+        // 1. Close all other stops
+        document.querySelectorAll('.stop-container').forEach(el => {
+            el.classList.remove('expanded');
+        });
+
+        // 2. Remove old highlight marker from map
+        if (mapHighlightMarker) {
+            map.removeLayer(mapHighlightMarker);
+            mapHighlightMarker = null;
+        }
+
+        // 3. Open the clicked one if it wasn't open
+        if (!isCurrentlyExpanded) {
+            element.classList.add('expanded');
+            
+            // 4. Highlight on map if lat/lng are valid
+            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                // Create a pulsing div icon
+                const pulseIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: '<div class="pulse-icon"></div>',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+
+                mapHighlightMarker = L.marker([lat, lng], {icon: pulseIcon, zIndexOffset: 1000}).addTo(map);
+                
+                // Pan map to the station smoothly
+                map.setView([lat, lng], 16, { animate: true, duration: 0.5 });
+            }
+        }
+    };
+
     async function openDetails(no, co, dir, dest, routeId, serviceType) {
         showPage('details');
         document.getElementById('details-title').innerText = `${no} 往 ${dest || '未知'}`;
@@ -401,23 +450,24 @@
 
         currentEtaToken++; 
         const myToken = currentEtaToken;
-        let routeLatLngs = []; // Store coordinates for the map
+        let routeLatLngs = [];
 
         if(!map) {
             map = L.map('map', {zoomControl: false}).setView([22.35, 114.1], 11);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
         }
 
-        // Setup Polyline and Markers
         let mainColor = co === 'CTB' ? 'var(--ctb-blue)' : (co === 'NLB' ? 'var(--nlb-green)' : 'var(--kmb-red)');
         
         if (mapPolyline) map.removeLayer(mapPolyline);
         if (mapMarkersGroup) map.removeLayer(mapMarkersGroup);
+        if (mapHighlightMarker) { map.removeLayer(mapHighlightMarker); mapHighlightMarker = null; }
         
         mapPolyline = L.polyline([], {color: mainColor, weight: 4, opacity: 0.8}).addTo(map);
         mapMarkersGroup = L.layerGroup().addTo(map);
 
-        const buildStopHTML = (seq, name, etas, color) => {
+        // UPDATED: buildStopHTML now accepts lat and lng
+        const buildStopHTML = (seq, name, etas, color, lat = null, lng = null) => {
             let primaryText = '未有資料';
             let detailsHtml = '<div class="eta-line">沒有班次資料</div>';
             
@@ -434,8 +484,9 @@
                 if(detailsHtml === '') detailsHtml = '<div class="eta-line">沒有班次資料</div>';
             }
 
+            // Added onclick event passing lat and lng
             return `
-            <div class="stop-container" onclick="this.classList.toggle('expanded')">
+            <div class="stop-container" onclick="toggleStop(this, ${lat}, ${lng})">
                 <div class="stop-row" id="row-${myToken}-${seq}">
                     <span class="stop-name">${seq}. ${name}</span>
                     <b class="stop-eta" style="color:${color}">${primaryText}</b>
@@ -478,7 +529,6 @@
                         const nameData = await nameRes.json();
                         const stopName = nameData.data.name_tc;
                         
-                        // Map Drawing Logic
                         const lat = parseFloat(nameData.data.lat);
                         const lng = parseFloat(nameData.data.long);
                         if (!isNaN(lat) && !isNaN(lng)) {
@@ -490,7 +540,8 @@
                         const stopEtas = allEtas.filter(e => String(e.seq) === String(s.seq) && e.dir === dirLetter && e.eta).map(e => e.eta);
                         
                         const container = document.getElementById(`row-${myToken}-${s.seq}`);
-                        if(container) container.parentElement.outerHTML = buildStopHTML(s.seq, stopName, stopEtas, mainColor);
+                        // Pass lat and lng to build function
+                        if(container) container.parentElement.outerHTML = buildStopHTML(s.seq, stopName, stopEtas, mainColor, lat, lng);
                     } catch(err) {}
                 }
 
@@ -530,7 +581,7 @@
                         const etas = (etaData.data || []).filter(e => e.dir === (dirWord === 'outbound' ? 'O' : 'I') && e.eta).map(e => e.eta);
                         
                         const container = document.getElementById(`row-${myToken}-${i+1}`);
-                        if(container) container.parentElement.outerHTML = buildStopHTML(i+1, stopName, etas, mainColor);
+                        if(container) container.parentElement.outerHTML = buildStopHTML(i+1, stopName, etas, mainColor, lat, lng);
                     } catch(err) {}
                 }
 
@@ -560,12 +611,11 @@
                         const etas = (etaData.estimatedArrivals || []).map(e => e.estimatedArrivalTime);
                         
                         const container = document.getElementById(`row-${myToken}-${i+1}`);
-                        if(container) container.parentElement.outerHTML = buildStopHTML(i+1, stopName, etas, mainColor);
+                        if(container) container.parentElement.outerHTML = buildStopHTML(i+1, stopName, etas, mainColor, lat, lng);
                     } catch(err) {}
                 }
             }
 
-            // Adjust map view to fit the route
             if (routeLatLngs.length > 0 && currentEtaToken === myToken) {
                 map.fitBounds(L.latLngBounds(routeLatLngs), {padding: [30, 30]});
             }
@@ -574,10 +624,6 @@
             list.innerHTML = '<p style="padding:40px; color:red; text-align:center;">網絡錯誤，無法獲取實時到站時間。</p>';
         }
     }
-
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if(e.key === 'Enter') { performSearch(); e.target.blur(); }
-    });
 
     window.onload = loadDatabase;
 </script>
