@@ -295,6 +295,10 @@
             }
 
             if (allRoutes.length === 0) throw new Error("No data loaded");
+
+            // 【新增】：自然排序 (Natural Sort)，讓 2 號會排在 10 號前面，英文字母也會混合排序
+            allRoutes.sort((a, b) => a.no.localeCompare(b.no, undefined, { numeric: true, sensitivity: 'base' }));
+
             renderList(allRoutes);
         } catch(e) { 
             document.getElementById('main-list').innerHTML = `<div class="status-text"><span class="status-icon">🥺</span>哎呀，網絡好像有點問題<br>請檢查連線後再試一次吧。</div>`; 
@@ -307,7 +311,6 @@
             container.innerHTML = `<div class="status-text"><span class="status-icon">🤔</span>找不到相關路線<br>試試換個號碼搜尋看看？</div>`; return; 
         }
         
-        // 【修復 1】：移除了 .slice(0, 150) 的限制，現在會完整渲染所有符合條件的路線
         container.innerHTML = list.map(r => `
             <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}')">
                 <div class="route-badge ${r.badge}">${r.no}</div>
@@ -342,7 +345,6 @@
         try {
             let stops = [];
             
-            // 【修復 2】：移除了 .slice(0, 50) 限制，並改用「分批載入 (Batching)」讀取所有車站，解決長途線車站被截斷的問題
             if(co === 'KMB') {
                 let kDir = (dir === 'I' || dir === 'inbound') ? 'inbound' : 'outbound';
                 const s = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${kDir}/${stype}`).then(r => r.json());
@@ -455,7 +457,6 @@
             } else if (co === 'CTB') {
                 const res = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${stop.id}/${no}`).then(r=>r.json());
                 if (res.data) {
-                    // 【修復 3】：城巴 ETA 的 direction 是用 'I' / 'O' 來代表的，原本寫成了配對 'inbound' / 'outbound' 導致永遠不匹配！
                     let cDirEta = (dir === 'I' || dir === 'inbound') ? 'I' : 'O'; 
                     validEtas = res.data.filter(e => e.dir === cDirEta && e.eta).sort((a,b) => new Date(a.eta) - new Date(b.eta));
                 }
