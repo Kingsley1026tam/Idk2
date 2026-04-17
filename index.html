@@ -79,10 +79,8 @@
         .search-box input::placeholder { color: var(--text-secondary); font-weight: 400; }
 
         .page { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-        
-        /* 頁面切換動畫 */
-        .page.active { display: flex; animation: pageIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
-        @keyframes pageIn { from { opacity: 0; transform: scale(0.98) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .page.active { display: flex; animation: pageIn 0.3s ease-out forwards; }
+        @keyframes pageIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
         .scrollable-content { 
             flex: 1; overflow-y: auto; padding: 10px 24px calc(120px + var(--safe-bottom)) 24px; 
@@ -90,18 +88,16 @@
         }
         .scrollable-content::-webkit-scrollbar { display: none; }
 
-        /* 列表項目浮現動畫 */
-        .route-item, .stop-container { 
+        .route-item { 
             background: var(--surface-color); border-radius: 24px; padding: 20px; 
             display: flex; align-items: center; gap: 18px; margin-bottom: 16px; 
             cursor: pointer; border: 1px solid var(--border-soft);
             box-shadow: 0 4px 16px rgba(0,0,0,0.02);
-            opacity: 0; transform: translateY(25px);
-            animation: slideUpFade 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            content-visibility: auto; /* 大幅提升渲染 1000 個項目的效能 */
+            opacity: 0; transform: translateY(15px);
+            animation: slideUpFade 0.4s ease-out forwards;
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
         }
-        .route-item:active { transform: scale(0.94); box-shadow: 0 2px 8px rgba(0,0,0,0.01); transition: 0.1s; }
+        .route-item:active { transform: scale(0.96); }
         
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
         
@@ -127,7 +123,7 @@
             color: var(--text-primary); font-size: 15px; font-weight: 600; 
             padding: 8px 16px; border-radius: 20px; cursor: pointer; 
             display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.2s;
         }
         .back-btn:active { transform: scale(0.9); }
         .back-btn svg { width: 16px; height: 16px; }
@@ -137,7 +133,13 @@
         
         .stop-list-wrapper { flex: 1; overflow-y: auto; padding: 20px 24px calc(120px + var(--safe-bottom)); }
         
-        .stop-container { padding: 18px 20px; justify-content: space-between; border-radius: 20px; margin-bottom: 12px; }
+        .stop-container { 
+            background: var(--surface-color); border-radius: 20px; margin-bottom: 12px;
+            border: 1px solid var(--border-soft); padding: 18px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            opacity: 0; transform: translateY(10px);
+            animation: slideUpFade 0.4s ease-out forwards;
+        }
         .stop-name { font-weight: 600; font-size: 16px; letter-spacing: -0.2px; line-height: 1.4; max-width: 70%; }
         .stop-eta { font-weight: 800; font-size: 16px; background: var(--brand-color); color: var(--brand-text); padding: 6px 12px; border-radius: 12px; text-align: center;}
         .stop-eta.far { background: transparent; color: var(--text-secondary); padding: 0; text-align: right;}
@@ -178,12 +180,10 @@
             transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1005; pointer-events: auto; box-shadow: 0 8px 20px var(--brand-light);
         }
 
-        .status-text { text-align: center; color: var(--text-secondary); padding: 50px 20px; font-size: 16px; font-weight: 500; line-height: 1.6; }
-        
-        /* 彈跳載入動畫 */
-        .status-icon { font-size: 44px; margin-bottom: 16px; display: block; }
+        .status-text { text-align: center; color: var(--text-secondary); padding: 40px 20px; font-size: 15px; font-weight: 500; line-height: 1.6; }
+        .status-icon { font-size: 40px; margin-bottom: 12px; display: block; }
         .status-icon.bouncing { animation: bounce 0.8s infinite alternate cubic-bezier(0.5, 0.05, 1, 0.5); }
-        @keyframes bounce { 0% { transform: translateY(0) scaleY(0.9); } 100% { transform: translateY(-15px) scaleY(1.05); } }
+        @keyframes bounce { 0% { transform: translateY(0) scaleY(0.95); } 100% { transform: translateY(-10px) scaleY(1.05); } }
     </style>
 </head>
 <body>
@@ -269,31 +269,36 @@
                 ctbRes.value.data.forEach(r => allRoutes.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: r.dir }));
             }
 
-            if (allRoutes.length === 0) throw new Error("No data loaded");
-            
+            if (allRoutes.length === 0) throw new Error("No data");
             renderList(allRoutes);
         } catch(e) { 
-            document.getElementById('main-list').innerHTML = `
-                <div class="status-text"><span class="status-icon bouncing">🥺</span>哎呀，網絡好像有點問題<br>請檢查連線後再試一次吧。</div>`; 
+            document.getElementById('main-list').innerHTML = `<div class="status-text"><span class="status-icon bouncing">🥺</span>網絡好像有點問題<br>請檢查連線後再試一次。</div>`; 
         }
     }
 
     function renderList(list) {
         const container = document.getElementById('main-list');
         if(!list.length) { 
-            container.innerHTML = `<div class="status-text"><span class="status-icon bouncing">🤔</span>找不到相關路線<br>試試換個號碼搜尋看看？</div>`; 
+            container.innerHTML = `<div class="status-text"><span class="status-icon">🤔</span>找不到相關路線</div>`; 
             return; 
         }
         
-        // 【修復 1 & 3】：移除所有 slice 限制顯示全部，並加上交錯延遲動畫
-        container.innerHTML = list.map((r, i) => `
-            <div class="route-item" style="animation-delay: ${Math.min(i * 0.02, 0.6)}s" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}')">
+        // 防崩潰機制 1：預設只渲染前 100 筆，避免 DOM 超載
+        const displayList = list.slice(0, 100);
+        
+        let html = displayList.map((r, i) => `
+            <div class="route-item" style="animation-delay: ${Math.min(i * 0.015, 0.4)}s" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}')">
                 <div class="route-badge ${r.badge}">${r.no}</div>
                 <div class="route-info">
                     <div class="route-dest">前往 ${r.dest}</div>
                     <div class="route-sub"><span style="background:var(--border-soft); padding:2px 6px; border-radius:6px; font-size:11px;">${r.co}</span> 從 ${r.orig} 出發</div>
                 </div>
             </div>`).join('');
+            
+        if (list.length > 100) {
+            html += `<div class="status-text" style="padding-top:10px;">請使用上方搜尋框尋找其他路線 🔍</div>`;
+        }
+        container.innerHTML = html;
     }
 
     function filterRoutes() {
@@ -307,7 +312,8 @@
         showPage('details', 1);
         document.getElementById('details-title').innerText = no;
         const listEl = document.getElementById('details-list');
-        listEl.innerHTML = `<div class="status-text"><span class="status-icon bouncing">🚌</span>正在為你飛奔獲取 ${no} 號巴士即時位置...</div>`;
+        
+        listEl.innerHTML = `<div id="loading-indicator" class="status-text"><span class="status-icon bouncing">🚌</span>正在為你索取 ${no} 號巴士即時位置...</div>`;
 
         if(!map) {
             map = L.map('map', {zoomControl: false, attributionControl: false});
@@ -315,48 +321,75 @@
         }
         mapMarkers.clearLayers();
         if(polyline) map.removeLayer(polyline);
+        
+        let pts = [];
+        polyline = L.polyline([], {color: '#FFCC00', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round'}).addTo(map);
+
+        // 防崩潰機制 2：分批載入核心邏輯，每 8 個站為一組，防止網絡進程死鎖
+        const fetchAndRenderBatches = async (stopList, fetchFn) => {
+            let firstBatch = true;
+            const batchSize = 8;
+            
+            for (let i = 0; i < stopList.length; i += batchSize) {
+                const batch = stopList.slice(i, i + batchSize);
+                const results = await Promise.all(batch.map(fetchFn));
+                
+                if (firstBatch) {
+                    document.getElementById('loading-indicator')?.remove();
+                    firstBatch = false;
+                }
+                
+                results.forEach((s, idx) => {
+                    const globalIdx = i + idx;
+                    const e = formatEta(s.eta);
+                    listEl.insertAdjacentHTML('beforeend', `
+                        <div class="stop-container">
+                            <div class="stop-name"><span style="color:var(--text-secondary); margin-right:8px; font-size:14px;">${globalIdx+1}</span> ${s.name}</div>
+                            <div class="stop-eta ${e.isNear ? '' : 'far'}">${e.label}</div>
+                        </div>
+                    `);
+                    if (!isNaN(s.lat)) {
+                        pts.push([s.lat, s.lng]);
+                        L.circleMarker([s.lat, s.lng], {radius: 5, color: '#FFFFFF', fillColor: '#FFCC00', fillOpacity: 1, weight: 2}).addTo(mapMarkers);
+                    }
+                });
+                
+                // 動態更新地圖視野
+                if (pts.length > 0) {
+                    polyline.setLatLngs(pts);
+                    mapMarkers.addTo(map);
+                    if (i === 0) map.flyToBounds(polyline.getBounds(), {padding: [40, 40], duration: 1, maxZoom: 14});
+                }
+            }
+            if (pts.length > 0) map.flyToBounds(polyline.getBounds(), {padding: [40, 40], duration: 1.2});
+        };
 
         try {
-            let stops = [];
-            
-            // ==================== 九巴 (KMB) 邏輯 ====================
-            if(co === 'KMB') {
+            if (co === 'KMB') {
                 const s = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${dir === 'I'?'inbound':'outbound'}/${stype}`).then(r => r.json());
                 const etas = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${no}/${stype}`).then(r => r.json());
                 
-                // 移除 slice() 限制，載入整條線所有車站
-                for(let item of s.data) { 
+                await fetchAndRenderBatches(s.data, async (item) => {
                     const info = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop/${item.stop}`).then(r => r.json());
-                    stops.push({ 
-                        name: info.data.name_tc, 
-                        lat: info.data.lat, 
-                        lng: info.data.long, 
+                    return {
+                        name: info.data.name_tc, lat: info.data.lat, lng: info.data.long,
                         eta: etas.data.find(e => e.seq == item.seq && e.dir == dir && e.eta)?.eta 
-                    });
-                }
-            } 
-            // ==================== 城巴 (CTB) 邏輯 ====================
-            else if (co === 'CTB') {
-                // 取得該路線所有車站
+                    };
+                });
+            } else if (co === 'CTB') {
                 const routeStopRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${dir}`).then(r => r.json());
-                const stopList = routeStopRes.data; // 移除 slice() 限制
-                
-                // 【修復 2】：城巴 ETA API 的方向代碼是 I 或 O，而不是 inbound/outbound！
                 const ctbDirEta = (dir === 'inbound' || dir === 'I') ? 'I' : 'O';
                 
-                const promises = stopList.map(async (item) => {
+                await fetchAndRenderBatches(routeStopRes.data, async (item) => {
                     const infoReq = fetch(`https://rt.data.gov.hk/v2/transport/citybus/stop/${item.stop}`).then(r => r.json());
                     const etaReq = fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${item.stop}/${no}`).then(r => r.json());
-                    
                     const [info, etas] = await Promise.allSettled([infoReq, etaReq]);
                     
                     let etaStr = null;
                     if (etas.status === 'fulfilled' && etas.value.data) {
-                        // 使用正確的 ctbDirEta 來比對方向
                         const validEta = etas.value.data.find(e => e.dir === ctbDirEta && e.seq === item.seq && e.eta);
                         if (validEta) etaStr = validEta.eta;
                     }
-                    
                     return {
                         name: info.status === 'fulfilled' ? info.value.data.name_tc : '未知車站',
                         lat: info.status === 'fulfilled' ? info.value.data.lat : NaN,
@@ -364,31 +397,9 @@
                         eta: etaStr
                     };
                 });
-                
-                stops = await Promise.all(promises);
-            }
-
-            // ==================== 渲染列表與地圖 ====================
-            listEl.innerHTML = stops.map((s, i) => {
-                const e = formatEta(s.eta);
-                return `<div class="stop-container" style="animation-delay: ${Math.min(i * 0.03, 0.8)}s">
-                    <div class="stop-name"><span style="color:var(--text-secondary); margin-right:8px; font-size:14px;">${i+1}</span> ${s.name}</div>
-                    <div class="stop-eta ${e.isNear ? '' : 'far'}">${e.label}</div>
-                </div>`
-            }).join('');
-
-            const pts = stops.map(s => [s.lat, s.lng]).filter(p => !isNaN(p[0]));
-            if (pts.length > 0) {
-                polyline = L.polyline(pts, {color: '#FFCC00', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round'}).addTo(map);
-                pts.forEach(p => L.circleMarker(p, {radius: 5, color: '#FFFFFF', fillColor: '#FFCC00', fillOpacity: 1, weight: 2}).addTo(mapMarkers));
-                mapMarkers.addTo(map);
-                
-                // 【修復 3】：使用 flyToBounds 取代 fitBounds，加入地圖平滑飛行效果
-                map.flyToBounds(polyline.getBounds(), {padding: [40, 40], duration: 1.2, easeLinearity: 0.25});
             }
         } catch(e) { 
-            console.error(e);
-            listEl.innerHTML = `<div class="status-text"><span class="status-icon bouncing">🥺</span>暫時未能獲取這條路線的即時數據。</div>`; 
+            listEl.innerHTML = `<div class="status-text"><span class="status-icon bouncing">🥺</span>暫時未能獲取數據，請返回重試。</div>`; 
         }
     }
 
@@ -401,8 +412,7 @@
         const tabRect = activeTab.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         
-        const centerPos = (tabRect.left - containerRect.left) + (tabRect.width / 2);
-        ind.style.left = (centerPos - (ind.offsetWidth / 2)) + 'px';
+        ind.style.left = ((tabRect.left - containerRect.left) + (tabRect.width / 2) - (ind.offsetWidth / 2)) + 'px';
     }
 
     function showPage(id, idx) {
@@ -414,7 +424,6 @@
         
         currentIdx = idx;
         moveIndicator(idx);
-        
         if (id === 'details' && map) setTimeout(() => map.invalidateSize(), 10);
     }
 
