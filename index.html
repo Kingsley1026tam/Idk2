@@ -105,7 +105,7 @@
         .badge-kmb { background: linear-gradient(135deg, #E63946, #D0202E); }
         .badge-lwb { background: linear-gradient(135deg, #FFAA00, #F39800); }
         .badge-ctb { background: linear-gradient(135deg, #FFF64D, #FFF200); color: #00558e; border: 1px solid rgba(0,0,0,0.05); }
-        .badge-joint { background: linear-gradient(135deg, #E63946, #F39800); border: 1px solid rgba(0,0,0,0.05); } /* 聯營路線漸變色 */
+        .badge-joint { background: linear-gradient(135deg, #E63946, #F39800); border: 1px solid rgba(0,0,0,0.05); } 
         
         .route-info { flex: 1; }
         .route-dest { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
@@ -293,7 +293,7 @@
             // 處理九巴路線
             if (kmbRes.status === 'fulfilled' && kmbRes.value.data) {
                 kmbRes.value.data.forEach(r => {
-                    let key = `${r.route}-${r.bound}-${r.service_type}`; // 用 路線+方向+服務類型 作為獨立識別碼
+                    let key = `${r.route}-${r.bound}-${r.service_type}`; 
                     routeMap[key] = {
                         no: r.route, dest: r.dest_tc, orig: r.orig_tc, 
                         co: 'KMB', badge: r.route.match(/^[A|E|NA|R|S|X]/) ? 'badge-lwb' : 'badge-kmb', 
@@ -302,21 +302,32 @@
                 });
             }
 
-            // 處理城巴路線（解決城巴單向問題，並嘗試與九巴合併成為聯營路線）
+            // 處理城巴路線（加入香港巴士號碼判斷規則）
             if (ctbRes.status === 'fulfilled' && ctbRes.value.data) {
                 ctbRes.value.data.forEach(r => {
+                    
+                    // 【重點更新】：只有 100 號或以上的過海線，或是 R8, S1，才有資格被視為聯營路線
+                    // 如果是 1-99 號（例如 KMB 1 和 CTB 1），它們是獨立路線，不會被合併。
+                    const isJointEligible = (() => {
+                        const numMatch = r.route.match(/\d+/);
+                        if (numMatch && parseInt(numMatch[0]) >= 100) return true;
+                        if (['R8', 'S1'].includes(r.route.toUpperCase())) return true;
+                        return false;
+                    })();
+
                     // 城巴去程 (Outbound)
-                    let keyO = `${r.route}-O-1`; // 預設以正常班次 (stype 1) 嘗試合併
-                    if (routeMap[keyO]) {
-                        routeMap[keyO].co = 'KMB+CTB'; // 合併為聯營
+                    let keyO = `${r.route}-O-1`; 
+                    if (isJointEligible && routeMap[keyO]) {
+                        routeMap[keyO].co = 'KMB+CTB'; 
                         routeMap[keyO].badge = 'badge-joint';
                     } else {
+                        // 加入獨立的 CTB 標記，避免覆蓋九巴同名但不聯營的路線
                         routeMap[`${r.route}-O-CTB`] = { no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: 'O', stype: '1' };
                     }
 
-                    // 城巴回程 (Inbound) - 將起點終點倒轉
+                    // 城巴回程 (Inbound)
                     let keyI = `${r.route}-I-1`;
-                    if (routeMap[keyI]) {
+                    if (isJointEligible && routeMap[keyI]) {
                         routeMap[keyI].co = 'KMB+CTB';
                         routeMap[keyI].badge = 'badge-joint';
                     } else {
@@ -329,7 +340,6 @@
 
             if (allRoutes.length === 0) throw new Error("No data loaded");
 
-            // 自然排序 (1, 1A, 2, 10...)
             allRoutes.sort((a, b) => a.no.localeCompare(b.no, undefined, { numeric: true, sensitivity: 'base' }));
 
             renderList(allRoutes);
@@ -385,7 +395,6 @@
             let kDir = (dir === 'I') ? 'inbound' : 'outbound';
             let cDir = (dir === 'I') ? 'inbound' : 'outbound';
             
-            // 如果包含九巴 (純九巴 或 聯營)
             if (co.includes('KMB')) {
                 const s = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${kDir}/${stype}`).then(r => r.json());
                 
@@ -397,7 +406,6 @@
                     stops.push(...(await Promise.all(batch)));
                 }
 
-                // 若是聯營，順便靜靜地獲取城巴的車站 ID 備用
                 if (co === 'KMB+CTB') {
                     try {
                         const cRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${cDir}`).then(r => r.json());
@@ -407,7 +415,6 @@
                     } catch(e) {}
                 }
             } 
-            // 如果只是城巴 (純城巴)
             else if (co === 'CTB') {
                 const s = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${cDir}`).then(r => r.json());
                 
@@ -499,7 +506,6 @@
             let promises = [];
             const { no, co, dir } = currentRouteData;
 
-            // 1. 如果有九巴，取得九巴 ETA
             if (co.includes('KMB') && stop.id) {
                 promises.push(fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${stop.id}`).then(r=>r.json()).then(res => {
                     if (res.data) {
@@ -509,9 +515,8 @@
                 }).catch(()=>{}));
             }
 
-            // 2. 如果有城巴，取得城巴 ETA
             if (co.includes('CTB') && (stop.ctb_id || co === 'CTB')) {
-                let cid = stop.ctb_id || stop.id; // 純城巴用 id，聯營用 ctb_id
+                let cid = stop.ctb_id || stop.id; 
                 promises.push(fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${cid}/${no}`).then(r=>r.json()).then(res => {
                     if (res.data) {
                         let etas = res.data.filter(e => e.dir === dir && e.eta);
@@ -520,13 +525,10 @@
                 }).catch(()=>{}));
             }
 
-            // 等待雙方數據回來
             await Promise.all(promises);
 
-            // 根據時間排序 (自然混合九巴和城巴)
             validEtas.sort((a,b) => new Date(a.eta) - new Date(b.eta));
 
-            // 去除重複 (如果九巴和城巴 API 都提供了同一個班次的時間，相差少於1分鐘的我們當作同一個處理)
             let uniqueEtas = [];
             validEtas.forEach(e => {
                 let time = new Date(e.eta).getTime();
