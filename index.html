@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>香港巴士 Plus - Yellow Theme Fixed</title>
+    <title>HKBusEta</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -28,11 +28,11 @@
             :root {
                 --bg-color: #121212;
                 --surface-color: #1E1E1E;
-                --text-primary: #F5F5F7;
+                --text-primary: #FFFFFF;    /* 改為純白 */
                 --text-secondary: #98989D;
                 --brand-color: #FFD60A; 
                 --brand-light: rgba(255, 214, 10, 0.15);
-                --brand-text: #000000;
+                --brand-text: #FFFFFF;      /* 依要求，深色模式下的黑字改為白色 */
                 --border-soft: #2C2C2E;
                 --nav-bg: #1E1E1E;
                 --nav-icon: #636366;
@@ -152,7 +152,6 @@
         .nav-tabs {
             position: absolute; top: 10px; left: 0; right: 0; height: 65px;
             display: flex; justify-content: space-around; align-items: center;
-            /* 修正 1：確保 Tabs 在最上層 (Z-index 1010) */
             z-index: 1010; pointer-events: auto;
         }
         
@@ -163,7 +162,6 @@
         .nav-tab svg { width: 26px; height: 26px; fill: var(--nav-icon); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .nav-tab span { font-size: 12px; font-weight: 600; color: var(--nav-icon); margin-top: 6px; transition: opacity 0.3s; }
         
-        /* 當選中時，SVG 變深色並浮起 */
         .nav-tab.active svg { transform: translateY(-24px) scale(1.1); fill: var(--brand-text); }
         .nav-tab.active span { opacity: 0; }
 
@@ -177,7 +175,6 @@
             border: 8px solid var(--bg-color); 
             left: 0; 
             transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            /* 修正 1：將 Indicator 的圖層放在 Tabs 之下 (Z-index 1005) */
             z-index: 1005; pointer-events: auto;
             box-shadow: 0 8px 20px var(--brand-light);
         }
@@ -257,7 +254,6 @@
         setTimeout(() => moveIndicator(0), 50); 
         
         try {
-            // 修正 3：使用 Promise.allSettled，這樣就算一間巴士公司的伺服器斷線，另一間也能正常載入
             const kmbReq = fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/').then(r => r.json());
             const ctbReq = fetch('https://rt.data.gov.hk/v2/transport/citybus/route/ctb').then(r => r.json());
             
@@ -286,7 +282,6 @@
             container.innerHTML = `<div class="status-text"><span class="status-icon">🤔</span>找不到相關路線<br>試試換個號碼搜尋看看？</div>`; 
             return; 
         }
-        // 修正 2：移除了 .slice(0, 50)，現在會渲染所有路線 (近 1000 條)
         container.innerHTML = list.map(r => `
             <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}')">
                 <div class="route-badge ${r.badge}">${r.no}</div>
@@ -338,7 +333,8 @@
             const pts = stops.map(s => [s.lat, s.lng]).filter(p => !isNaN(p[0]));
             if (pts.length > 0) {
                 polyline = L.polyline(pts, {color: '#FFCC00', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round'}).addTo(map);
-                pts.forEach(p => L.circleMarker(p, {radius: 5, color: '#1D1D1F', fillColor: '#FFCC00', fillOpacity: 1, weight: 2}).addTo(mapMarkers));
+                // 順便把地圖標記的邊框也改成白色 (#FFFFFF)
+                pts.forEach(p => L.circleMarker(p, {radius: 5, color: '#FFFFFF', fillColor: '#FFCC00', fillOpacity: 1, weight: 2}).addTo(mapMarkers));
                 mapMarkers.addTo(map);
                 map.fitBounds(polyline.getBounds(), {padding: [40, 40]});
             }
