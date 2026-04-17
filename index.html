@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>HKBusEta</title>
     
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="favicon.ico">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
@@ -28,11 +31,11 @@
             :root {
                 --bg-color: #121212;
                 --surface-color: #1E1E1E;
-                --text-primary: #FFFFFF;    /* 改為純白 */
+                --text-primary: #FFFFFF;    
                 --text-secondary: #98989D;
                 --brand-color: #FFD60A; 
                 --brand-light: rgba(255, 214, 10, 0.15);
-                --brand-text: #FFFFFF;      /* 依要求，深色模式下的黑字改為白色 */
+                --brand-text: #FFFFFF;      
                 --border-soft: #2C2C2E;
                 --nav-bg: #1E1E1E;
                 --nav-icon: #636366;
@@ -131,10 +134,9 @@
             display: flex; justify-content: space-between; align-items: center;
         }
         .stop-name { font-weight: 600; font-size: 16px; letter-spacing: -0.2px; line-height: 1.4; max-width: 70%; }
-        .stop-eta { font-weight: 800; font-size: 16px; background: var(--brand-color); color: var(--brand-text); padding: 6px 12px; border-radius: 12px; }
-        .stop-eta.far { background: transparent; color: var(--text-secondary); padding: 0; }
+        .stop-eta { font-weight: 800; font-size: 16px; background: var(--brand-color); color: var(--brand-text); padding: 6px 12px; border-radius: 12px; text-align: center;}
+        .stop-eta.far { background: transparent; color: var(--text-secondary); padding: 0; text-align: right;}
 
-        /* --- 凹陷導航欄 --- */
         .bottom-nav-wrapper {
             position: absolute; bottom: 0; left: 0; right: 0; 
             height: calc(85px + var(--safe-bottom));
@@ -282,7 +284,8 @@
             container.innerHTML = `<div class="status-text"><span class="status-icon">🤔</span>找不到相關路線<br>試試換個號碼搜尋看看？</div>`; 
             return; 
         }
-        container.innerHTML = list.map(r => `
+        // 為了效能，我們只渲染前150條，並依賴搜尋功能尋找其他路線
+        container.innerHTML = list.slice(0, 150).map(r => `
             <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}')">
                 <div class="route-badge ${r.badge}">${r.no}</div>
                 <div class="route-info">
@@ -314,14 +317,55 @@
 
         try {
             let stops = [];
+            
+            // ==================== 九巴 (KMB) 邏輯 ====================
             if(co === 'KMB') {
                 const s = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${dir === 'I'?'inbound':'outbound'}/${stype}`).then(r => r.json());
                 const etas = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${no}/${stype}`).then(r => r.json());
-                for(let item of s.data.slice(0, 25)) {
+                
+                for(let item of s.data.slice(0, 30)) { // 限制前30個站以防載入過久
                     const info = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop/${item.stop}`).then(r => r.json());
-                    stops.push({ name: info.data.name_tc, lat: info.data.lat, lng: info.data.long, eta: etas.data.find(e => e.seq == item.seq && e.dir == dir)?.eta });
+                    stops.push({ 
+                        name: info.data.name_tc, 
+                        lat: info.data.lat, 
+                        lng: info.data.long, 
+                        eta: etas.data.find(e => e.seq == item.seq && e.dir == dir && e.eta)?.eta 
+                    });
                 }
+            } 
+            // ==================== 城巴 (CTB) 邏輯 (新增) ====================
+            else if (co === 'CTB') {
+                // 1. 取得該路線所有車站
+                const routeStopRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${dir}`).then(r => r.json());
+                
+                // 為了效能，同樣只取前 30 個站，並使用 Promise.all 同時發送請求
+                const stopList = routeStopRes.data.slice(0, 30);
+                
+                const promises = stopList.map(async (item) => {
+                    const infoReq = fetch(`https://rt.data.gov.hk/v2/transport/citybus/stop/${item.stop}`).then(r => r.json());
+                    const etaReq = fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${item.stop}/${no}`).then(r => r.json());
+                    
+                    const [info, etas] = await Promise.allSettled([infoReq, etaReq]);
+                    
+                    let etaStr = null;
+                    if (etas.status === 'fulfilled' && etas.value.data) {
+                        // 尋找符合方向和站點順序的有效 ETA
+                        const validEta = etas.value.data.find(e => e.dir === dir && e.seq === item.seq && e.eta);
+                        if (validEta) etaStr = validEta.eta;
+                    }
+                    
+                    return {
+                        name: info.status === 'fulfilled' ? info.value.data.name_tc : '未知車站',
+                        lat: info.status === 'fulfilled' ? info.value.data.lat : NaN,
+                        lng: info.status === 'fulfilled' ? info.value.data.long : NaN,
+                        eta: etaStr
+                    };
+                });
+                
+                stops = await Promise.all(promises);
             }
+
+            // ==================== 渲染列表與地圖 ====================
             listEl.innerHTML = stops.map((s, i) => {
                 const e = formatEta(s.eta);
                 return `<div class="stop-container">
@@ -333,12 +377,12 @@
             const pts = stops.map(s => [s.lat, s.lng]).filter(p => !isNaN(p[0]));
             if (pts.length > 0) {
                 polyline = L.polyline(pts, {color: '#FFCC00', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round'}).addTo(map);
-                // 順便把地圖標記的邊框也改成白色 (#FFFFFF)
                 pts.forEach(p => L.circleMarker(p, {radius: 5, color: '#FFFFFF', fillColor: '#FFCC00', fillOpacity: 1, weight: 2}).addTo(mapMarkers));
                 mapMarkers.addTo(map);
                 map.fitBounds(polyline.getBounds(), {padding: [40, 40]});
             }
         } catch(e) { 
+            console.error(e);
             listEl.innerHTML = `<div class="status-text"><span class="status-icon">🥺</span>暫時未能獲取這條路線的即時數據。</div>`; 
         }
     }
