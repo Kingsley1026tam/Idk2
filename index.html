@@ -266,7 +266,11 @@
                 kmbRes.value.data.forEach(r => allRoutes.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'KMB', badge: r.route.match(/^[A|E|NA|R|S|X]/) ? 'badge-lwb' : 'badge-kmb', dir: r.bound, stype: r.service_type }));
             }
             if (ctbRes.status === 'fulfilled' && ctbRes.value.data) {
-                ctbRes.value.data.forEach(r => allRoutes.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: r.dir }));
+                // 【修復 3：城巴 API 不回傳來回程方向，我們手動為每一條線建立去程與回程】
+                ctbRes.value.data.forEach(r => {
+                    allRoutes.push({ no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: 'outbound' });
+                    allRoutes.push({ no: r.route, dest: r.orig_tc, orig: r.dest_tc, co: 'CTB', badge: 'badge-ctb', dir: 'inbound' });
+                });
             }
 
             if (allRoutes.length === 0) throw new Error("No data");
@@ -283,7 +287,6 @@
             return; 
         }
         
-        // 防崩潰機制 1：預設只渲染前 100 筆，避免 DOM 超載
         const displayList = list.slice(0, 100);
         
         let html = displayList.map((r, i) => `
@@ -316,7 +319,8 @@
         listEl.innerHTML = `<div id="loading-indicator" class="status-text"><span class="status-icon bouncing">🚌</span>正在為你索取 ${no} 號巴士即時位置...</div>`;
 
         if(!map) {
-            map = L.map('map', {zoomControl: false, attributionControl: false});
+            // 【修復 2：給定預設視角，防止 flyToBounds 崩潰】
+            map = L.map('map', {zoomControl: false, attributionControl: false}).setView([22.3193, 114.1694], 11);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
         }
         mapMarkers.clearLayers();
@@ -325,14 +329,21 @@
         let pts = [];
         polyline = L.polyline([], {color: '#FFCC00', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round'}).addTo(map);
 
-        // 防崩潰機制 2：分批載入核心邏輯，每 8 個站為一組，防止網絡進程死鎖
         const fetchAndRenderBatches = async (stopList, fetchFn) => {
             let firstBatch = true;
-            const batchSize = 8;
+            const batchSize = 6; 
             
             for (let i = 0; i < stopList.length; i += batchSize) {
                 const batch = stopList.slice(i, i + batchSize);
-                const results = await Promise.all(batch.map(fetchFn));
+                
+                // 【修復 1：獨立攔截每個車站的錯誤，不會一死全死】
+                const results = await Promise.all(batch.map(async (item) => {
+                    try {
+                        return await fetchFn(item);
+                    } catch (err) {
+                        return { name: '暫時無法讀取', lat: NaN, lng: NaN, eta: null };
+                    }
+                }));
                 
                 if (firstBatch) {
                     document.getElementById('loading-indicator')?.remove();
@@ -348,20 +359,29 @@
                             <div class="stop-eta ${e.isNear ? '' : 'far'}">${e.label}</div>
                         </div>
                     `);
-                    if (!isNaN(s.lat)) {
+                    if (!isNaN(s.lat) && !isNaN(s.lng)) {
                         pts.push([s.lat, s.lng]);
                         L.circleMarker([s.lat, s.lng], {radius: 5, color: '#FFFFFF', fillColor: '#FFCC00', fillOpacity: 1, weight: 2}).addTo(mapMarkers);
                     }
                 });
                 
-                // 動態更新地圖視野
                 if (pts.length > 0) {
                     polyline.setLatLngs(pts);
                     mapMarkers.addTo(map);
-                    if (i === 0) map.flyToBounds(polyline.getBounds(), {padding: [40, 40], duration: 1, maxZoom: 14});
+                    try {
+                        const bounds = polyline.getBounds();
+                        if (bounds.isValid() && i === 0) {
+                            map.flyToBounds(bounds, {padding: [40, 40], duration: 1, maxZoom: 15});
+                        }
+                    } catch(e) {}
                 }
             }
-            if (pts.length > 0) map.flyToBounds(polyline.getBounds(), {padding: [40, 40], duration: 1.2});
+            if (pts.length > 0) {
+                try {
+                    const bounds = polyline.getBounds();
+                    if (bounds.isValid()) map.flyToBounds(bounds, {padding: [40, 40], duration: 1.2, maxZoom: 15});
+                } catch(e){}
+            }
         };
 
         try {
@@ -369,18 +389,27 @@
                 const s = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${dir === 'I'?'inbound':'outbound'}/${stype}`).then(r => r.json());
                 const etas = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${no}/${stype}`).then(r => r.json());
                 
-                await fetchAndRenderBatches(s.data, async (item) => {
+                const stopList = s.data || [];
+                if (stopList.length === 0) throw new Error('No stops data');
+
+                await fetchAndRenderBatches(stopList, async (item) => {
                     const info = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop/${item.stop}`).then(r => r.json());
+                    const validEta = etas.data ? etas.data.find(e => e.seq == item.seq && e.dir == dir && e.eta) : null;
                     return {
-                        name: info.data.name_tc, lat: info.data.lat, lng: info.data.long,
-                        eta: etas.data.find(e => e.seq == item.seq && e.dir == dir && e.eta)?.eta 
+                        name: info?.data?.name_tc || '未知車站',
+                        lat: info?.data?.lat || NaN,
+                        lng: info?.data?.long || NaN,
+                        eta: validEta?.eta 
                     };
                 });
             } else if (co === 'CTB') {
                 const routeStopRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${dir}`).then(r => r.json());
+                const stopList = routeStopRes.data || [];
+                if (stopList.length === 0) throw new Error('No stops data');
+                
                 const ctbDirEta = (dir === 'inbound' || dir === 'I') ? 'I' : 'O';
                 
-                await fetchAndRenderBatches(routeStopRes.data, async (item) => {
+                await fetchAndRenderBatches(stopList, async (item) => {
                     const infoReq = fetch(`https://rt.data.gov.hk/v2/transport/citybus/stop/${item.stop}`).then(r => r.json());
                     const etaReq = fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${item.stop}/${no}`).then(r => r.json());
                     const [info, etas] = await Promise.allSettled([infoReq, etaReq]);
@@ -391,15 +420,16 @@
                         if (validEta) etaStr = validEta.eta;
                     }
                     return {
-                        name: info.status === 'fulfilled' ? info.value.data.name_tc : '未知車站',
-                        lat: info.status === 'fulfilled' ? info.value.data.lat : NaN,
-                        lng: info.status === 'fulfilled' ? info.value.data.long : NaN,
+                        name: info.status === 'fulfilled' ? (info.value.data?.name_tc || '未知車站') : '未知車站',
+                        lat: info.status === 'fulfilled' ? (info.value.data?.lat || NaN) : NaN,
+                        lng: info.status === 'fulfilled' ? (info.value.data?.long || NaN) : NaN,
                         eta: etaStr
                     };
                 });
             }
         } catch(e) { 
-            listEl.innerHTML = `<div class="status-text"><span class="status-icon bouncing">🥺</span>暫時未能獲取數據，請返回重試。</div>`; 
+            console.error(e);
+            listEl.innerHTML = `<div class="status-text"><span class="status-icon">🥺</span>暫時未能獲取此路線的資料，請返回列表重試。</div>`; 
         }
     }
 
