@@ -110,6 +110,8 @@
         .badge-lwb { background: linear-gradient(135deg, #FFAA00, #F39800); }
         .badge-ctb { background: linear-gradient(135deg, #FFF64D, #FFF200); color: #00558e; border: 1px solid rgba(0,0,0,0.05); }
         .badge-joint { background: linear-gradient(135deg, #E63946, #F39800); border: 1px solid rgba(0,0,0,0.05); } 
+        .badge-nlb { background: linear-gradient(135deg, #007A60, #00997A); }
+        .badge-gmb { background: linear-gradient(135deg, #009E60, #00C853); border: 1px solid rgba(0,0,0,0.05); }
         
         .route-info { flex: 1; min-width: 0; }
         .route-dest { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -277,7 +279,7 @@
     let map = null, polyline = null, mapMarkers = L.layerGroup();
     
     let currentStopsData = [];
-    let currentRouteData = { no: '', co: '', dir: '', stype: '' };
+    let currentRouteData = { no: '', co: '', dir: '', stype: '', routeId: '', routeSeq: '' };
 
     let nearbyRefreshInterval = null;
     let nearbyGroupsCache = [];
@@ -325,18 +327,25 @@
 
     async function init() {
         setGreeting();
-        initKeyboardUI(); // 初始化特製鍵盤
+        initKeyboardUI();
         setTimeout(() => moveIndicator(0), 50); 
         
         try {
             loadAllStopsInBackground();
 
+            // Fetch All Providers
             const kmbReq = fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/').then(r => r.json());
             const ctbReq = fetch('https://rt.data.gov.hk/v2/transport/citybus/route/ctb').then(r => r.json());
-            const [kmbRes, ctbRes] = await Promise.allSettled([kmbReq, ctbReq]);
+            const nlbReq = fetch('https://rt.data.gov.hk/v2/transport/nlb/route.php?action=list').then(r => r.json());
+            const gmbReqH = fetch('https://data.etabus.gov.hk/v1/transport/minibus/route/HKI').then(r => r.json());
+            const gmbReqK = fetch('https://data.etabus.gov.hk/v1/transport/minibus/route/KLN').then(r => r.json());
+            const gmbReqN = fetch('https://data.etabus.gov.hk/v1/transport/minibus/route/NT').then(r => r.json());
+
+            const [kmbRes, ctbRes, nlbRes, gmbResH, gmbResK, gmbResN] = await Promise.allSettled([kmbReq, ctbReq, nlbReq, gmbReqH, gmbReqK, gmbReqN]);
 
             let routeMap = {};
 
+            // 1. Process KMB
             if (kmbRes.status === 'fulfilled' && kmbRes.value.data) {
                 kmbRes.value.data.forEach(r => {
                     let key = `${r.route}-${r.bound}-${r.service_type}`; 
@@ -348,6 +357,7 @@
                 });
             }
 
+            // 2. Process CTB
             if (ctbRes.status === 'fulfilled' && ctbRes.value.data) {
                 ctbRes.value.data.forEach(r => {
                     const isJointEligible = (() => {
@@ -375,11 +385,42 @@
                 });
             }
 
+            // 3. Process NLB
+            if (nlbRes.status === 'fulfilled' && nlbRes.value.routes) {
+                nlbRes.value.routes.forEach(r => {
+                    let parts = r.routeName_c.split(/[-\>]/);
+                    let orig = parts[0] ? parts[0].trim() : '';
+                    let dest = parts[1] ? parts[1].trim() : orig;
+                    routeMap[`NLB-${r.routeId}`] = {
+                        no: r.routeNo, dest: dest, orig: orig, 
+                        co: 'NLB', badge: 'badge-nlb', 
+                        routeId: r.routeId, dir: '', stype: ''
+                    };
+                });
+            }
+
+            // 4. Process GMB (HKI, KLN, NT)
+            [gmbResH, gmbResK, gmbResN].forEach(res => {
+                if(res.status === 'fulfilled' && res.value.data) {
+                    res.value.data.forEach(r => {
+                        if(r.directions) {
+                            r.directions.forEach(d => {
+                                routeMap[`GMB-${r.route_id}-${d.route_seq}`] = {
+                                    no: r.route_code, dest: d.dest_tc, orig: d.orig_tc,
+                                    co: 'GMB', badge: 'badge-gmb',
+                                    routeId: r.route_id, routeSeq: d.route_seq, dir: '', stype: ''
+                                };
+                            });
+                        }
+                    });
+                }
+            });
+
             allRoutes = Object.values(routeMap);
             allRoutes.sort((a, b) => a.no.localeCompare(b.no, undefined, { numeric: true, sensitivity: 'base' }));
 
             renderList(allRoutes);
-            updateKeyboardState(); // 載入完更新按鍵狀態
+            updateKeyboardState();
         } catch(e) { 
             document.getElementById('main-list').innerHTML = `
                 <div class="status-text">
@@ -405,8 +446,8 @@
                 if (k.dataset.val === 'del') input.value = input.value.slice(0, -1);
                 else input.value += k.dataset.val;
                 
-                filterRoutes(); // 對接你的搜尋邏輯
-                updateKeyboardState(); // 更新鍵盤按鈕禁用狀態
+                filterRoutes(); 
+                updateKeyboardState(); 
             }
         });
     }
@@ -421,7 +462,7 @@
 
     function openKeyboard() {
         document.getElementById('customKb').classList.add('show');
-        document.getElementById('bottom-nav').classList.add('hide'); // 隱藏底部導航，防止擋住鍵盤
+        document.getElementById('bottom-nav').classList.add('hide');
         document.getElementById('search-box-container').classList.add('kb-active');
     }
 
@@ -455,13 +496,13 @@
         }
         
         container.innerHTML = list.map(r => `
-            <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}')">
+            <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}', '${r.routeId || ''}', '${r.routeSeq || ''}')">
                 <div class="route-badge ${r.badge}">${r.no}</div>
                 <div class="route-info">
                     <div class="route-dest">往 ${r.dest}</div>
                     <div class="route-sub">
                         <span style="background:var(--border-soft); padding:2px 6px; border-radius:4px; font-size:11px;">
-                            ${r.co === 'KMB+CTB' ? '聯營' : r.co}
+                            ${r.co === 'KMB+CTB' ? '聯營' : (r.co === 'GMB' ? '綠色小巴' : (r.co === 'NLB' ? '新大嶼山巴士' : r.co))}
                         </span> 
                         由 ${r.orig} 出發
                     </div>
@@ -653,8 +694,8 @@
         btn.classList.remove('spinning');
     }
 
-    async function openRoute(no, co, dir, stype, dest) {
-        currentRouteData = { no, co, dir, stype };
+    async function openRoute(no, co, dir, stype, dest, routeId, routeSeq) {
+        currentRouteData = { no, co, dir, stype, routeId, routeSeq };
         showPage('details', 2);
         document.getElementById('details-title').innerText = no;
         const listEl = document.getElementById('details-list');
@@ -673,10 +714,10 @@
 
         try {
             let stops = [];
-            let kDir = (dir === 'I') ? 'inbound' : 'outbound';
-            let cDir = (dir === 'I') ? 'inbound' : 'outbound';
             
             if (co.includes('KMB')) {
+                let kDir = (dir === 'I') ? 'inbound' : 'outbound';
+                let cDir = (dir === 'I') ? 'inbound' : 'outbound';
                 const s = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${kDir}/${stype}`).then(r => r.json());
                 
                 for (let i = 0; i < s.data.length; i += 15) {
@@ -697,6 +738,7 @@
                 }
             } 
             else if (co === 'CTB') {
+                let cDir = (dir === 'I') ? 'inbound' : 'outbound';
                 const s = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${cDir}`).then(r => r.json());
                 
                 for (let i = 0; i < s.data.length; i += 15) {
@@ -706,6 +748,21 @@
                     });
                     stops.push(...(await Promise.all(batch)));
                 }
+            } 
+            else if (co === 'NLB') {
+                const s = await fetch(`https://rt.data.gov.hk/v2/transport/nlb/stop.php?action=list&routeId=${routeId}`).then(r => r.json());
+                stops = (s.stops || []).map(st => ({
+                    id: st.stopId, name: st.stopName_c, 
+                    lat: parseFloat(st.latitude), lng: parseFloat(st.longitude)
+                }));
+            } 
+            else if (co === 'GMB') {
+                const s = await fetch(`https://data.etabus.gov.hk/v1/transport/minibus/route-stop/${routeId}/${routeSeq}`).then(r => r.json());
+                stops = (s.data || []).map(st => ({
+                    id: st.stop_id, name: st.name_tc,
+                    lat: st.coordinates && st.coordinates.wgs84 ? st.coordinates.wgs84.latitude : NaN,
+                    lng: st.coordinates && st.coordinates.wgs84 ? st.coordinates.wgs84.longitude : NaN
+                }));
             }
 
             currentStopsData = stops;
@@ -789,7 +846,7 @@
         try {
             let validEtas = [];
             let promises = [];
-            const { no, co, dir } = currentRouteData;
+            const { no, co, dir, routeId, routeSeq } = currentRouteData;
 
             if (co.includes('KMB') && stop.id) {
                 promises.push(fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${stop.id}`).then(r=>r.json()).then(res => {
@@ -806,6 +863,27 @@
                     if (res.data) {
                         let etas = res.data.filter(e => e.dir === dir && e.eta);
                         validEtas.push(...etas.map(e => ({ eta: e.eta, rmk: e.rmk_tc, co: '城巴' })));
+                    }
+                }).catch(()=>{}));
+            }
+
+            if (co === 'NLB') {
+                promises.push(fetch(`https://rt.data.gov.hk/v2/transport/nlb/eta.php?action=list&routeId=${routeId}&stopId=${stop.id}`).then(r=>r.json()).then(res => {
+                    if (res.eta) {
+                        let etas = res.eta.filter(e => e.estimatedArrivalTime);
+                        validEtas.push(...etas.map(e => ({ 
+                            eta: e.estimatedArrivalTime.replace(' ', 'T') + '+08:00', // Fix timezone format
+                            rmk: e.routeVariantName_c || '', co: '大嶼山巴士' 
+                        })));
+                    }
+                }).catch(()=>{}));
+            }
+
+            if (co === 'GMB') {
+                promises.push(fetch(`https://data.etabus.gov.hk/v1/transport/minibus/eta/${routeId}/${stop.id}`).then(r=>r.json()).then(res => {
+                    if (res.data) {
+                        let etas = res.data.filter(e => e.route_seq == routeSeq && e.eta_seq && e.timestamp);
+                        validEtas.push(...etas.map(e => ({ eta: e.timestamp, rmk: e.remarks_tc || '', co: '小巴' })));
                     }
                 }).catch(()=>{}));
             }
@@ -827,7 +905,8 @@
             } else {
                 detailsEl.innerHTML = top3.map((e, i) => {
                     let timeObj = formatEta(e.eta);
-                    let coTag = co === 'KMB+CTB' ? `<span style="font-size:10px; padding:2px 5px; border-radius:4px; background:var(--border-soft); margin-right:4px;">${e.co}</span>` : '';
+                    let showCo = co === 'KMB+CTB' || co === 'GMB' || co === 'NLB';
+                    let coTag = showCo ? `<span style="font-size:10px; padding:2px 5px; border-radius:4px; background:var(--border-soft); margin-right:4px;">${e.co}</span>` : '';
                     return `
                     <div class="eta-row">
                         <span class="eta-remark">
@@ -868,7 +947,6 @@
         
         if (id === 'details' && map) setTimeout(() => map.invalidateSize(), 10);
         
-        // 切換頁面時關閉鍵盤
         if (id !== 'home') closeKeyboard();
         
         if (id === 'nearby') {
