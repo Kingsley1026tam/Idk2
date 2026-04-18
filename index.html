@@ -5,87 +5,193 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>HKBusEta</title>
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="HKBus">
-    <link rel="apple-touch-icon" href="icon.png">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         :root {
-            --bg-color: #F7F7F9; --surface-color: #FFFFFF; --text-primary: #1D1D1F; --text-secondary: #86868B;
-            --brand-color: #FFCC00; --brand-light: rgba(255, 204, 0, 0.15); --brand-text: #1D1D1F;
-            --border-soft: #F0F0F2; --nav-bg: #FFFFFF; --nav-icon: #A1A1A6;
-            --safe-top: calc(env(safe-area-inset-top, 45px) + 20px); --safe-bottom: env(safe-area-inset-bottom, 24px);
+            --bg-color: #F7F7F9;        
+            --surface-color: #FFFFFF;   
+            --text-primary: #1D1D1F;    
+            --text-secondary: #86868B;
+            --brand-color: #FFCC00;     
+            --brand-light: rgba(255, 204, 0, 0.15);     
+            --brand-text: #1D1D1F;      
+            --border-soft: #F0F0F2;
+            --nav-bg: #FFFFFF;
+            --nav-icon: #A1A1A6;
+            
+            --safe-top: calc(env(safe-area-inset-top, 45px) + 20px);
+            --safe-bottom: env(safe-area-inset-bottom, 24px);
         }
+
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg-color: #121212; --surface-color: #1E1E1E; --text-primary: #FFFFFF; --text-secondary: #98989D;
-                --brand-color: #FFD60A; --brand-text: #FFFFFF; --border-soft: #2C2C2E; --nav-bg: #1E1E1E;
+                --bg-color: #121212;
+                --surface-color: #1E1E1E;
+                --text-primary: #FFFFFF;    
+                --text-secondary: #98989D;
+                --brand-color: #FFD60A; 
+                --brand-light: rgba(255, 214, 10, 0.15);
+                --brand-text: #FFFFFF;      
+                --border-soft: #2C2C2E;
+                --nav-bg: #1E1E1E;
+                --nav-icon: #636366;
             }
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-color); color: var(--text-primary); height: 100dvh; overflow: hidden; }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "PingFang HK", sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-color); color: var(--text-primary); height: 100dvh; overflow: hidden; transition: background-color 0.4s ease; }
 
         .app-container { width: 100%; height: 100dvh; display: flex; flex-direction: column; position: relative; }
-        .header-section { padding: var(--safe-top) 24px 16px 24px; z-index: 10; flex-shrink: 0; }
-        .greeting { font-size: 15px; color: var(--text-secondary); font-weight: 500; margin-bottom: 4px; display: block; }
-        .header-section h1 { font-size: 32px; font-weight: 700; margin-bottom: 20px; }
+
+        .header-section {
+            padding: var(--safe-top) 24px 16px 24px;
+            background: linear-gradient(180deg, var(--bg-color) 70%, rgba(247,247,249,0) 100%);
+            z-index: 10; flex-shrink: 0;
+        }
+        @media (prefers-color-scheme: dark) {
+            .header-section { background: linear-gradient(180deg, var(--bg-color) 70%, rgba(18,18,18,0) 100%); }
+        }
         
-        .search-box { display: flex; align-items: center; background: var(--surface-color); border: 1px solid var(--border-soft); border-radius: 16px; padding: 12px 16px; transition: all 0.3s; }
-        .search-box.kb-active { border-color: var(--brand-color) !important; border-width: 2px; box-shadow: 0 0 8px var(--brand-light); padding: 11px 15px; }
+        .greeting { font-size: 15px; color: var(--text-secondary); font-weight: 500; margin-bottom: 4px; display: block; }
+        .header-section h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+        .refresh-btn { font-size: 14px; background: var(--surface-color); border: 1px solid var(--border-soft); padding: 6px 12px; border-radius: 14px; font-weight: 600; color: var(--text-primary); cursor: pointer; display: none; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .refresh-btn.spinning svg { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .search-box {
+            display: flex; align-items: center; background: var(--surface-color); 
+            border: 1px solid var(--border-soft); border-radius: 16px; padding: 12px 16px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: all 0.3s ease;
+        }
+        .search-box:focus-within { border-color: var(--brand-color); box-shadow: 0 8px 24px var(--brand-light); }
+        
+        /* 當自訂鍵盤開啟時，搜尋框的高亮樣式 */
+        .search-box.kb-active {
+            border-color: var(--brand-color) !important;
+            border-width: 2px;
+            box-shadow: 0 0 8px var(--brand-light);
+            padding: 11px 15px; /* 增加邊框厚度時微調 padding 保持高度不變 */
+        }
+        
         .search-box svg { fill: var(--text-secondary); width: 20px; height: 20px; flex-shrink: 0; }
-        .search-box input { flex: 1; border: none; background: transparent; font-size: 18px; color: var(--text-primary); outline: none; margin-left: 10px; font-weight: 600; cursor: pointer; }
+        
+        /* Disable native keyboard via readonly */
+        .search-box input { 
+            flex: 1; border: none; background: transparent; font-size: 18px; 
+            color: var(--text-primary); outline: none; margin-left: 10px; font-weight: 600;
+            cursor: pointer; caret-color: transparent;
+        }
+        .search-box input::placeholder { color: var(--text-secondary); font-weight: 400; font-size: 16px; }
 
         .page { display: none; flex: 1; flex-direction: column; overflow: hidden; }
         .page.active { display: flex; animation: fadeIn 0.3s ease forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        .scrollable-content { flex: 1; overflow-y: auto; padding: 10px 24px calc(110px + var(--safe-bottom)) 24px; }
+        .scrollable-content { flex: 1; overflow-y: auto; padding: 10px 24px calc(110px + var(--safe-bottom)) 24px; scroll-behavior: smooth; }
         .scrollable-content::-webkit-scrollbar { display: none; }
 
-        .route-item { background: var(--surface-color); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 16px; margin-bottom: 12px; cursor: pointer; border: 1px solid var(--border-soft); }
+        .route-item { 
+            background: var(--surface-color); border-radius: 16px; padding: 16px; 
+            display: flex; align-items: center; gap: 16px; margin-bottom: 12px; 
+            cursor: pointer; transition: transform 0.2s ease; border: 1px solid var(--border-soft);
+        }
         .route-item:active { transform: scale(0.97); }
-        .route-badge { color: #fff; font-size: 18px; font-weight: 700; min-width: 60px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; padding: 0 8px; flex-shrink: 0; }
+        
+        .route-badge { 
+            color: #fff; font-size: 18px; font-weight: 700; min-width: 60px; height: 44px; 
+            display: flex; align-items: center; justify-content: center; 
+            border-radius: 12px; padding: 0 8px; flex-shrink: 0; text-align: center;
+        }
         .badge-kmb { background: linear-gradient(135deg, #E63946, #D0202E); }
         .badge-lwb { background: linear-gradient(135deg, #FFAA00, #F39800); }
         .badge-ctb { background: linear-gradient(135deg, #FFF64D, #FFF200); color: #00558e; border: 1px solid rgba(0,0,0,0.05); }
+        .badge-joint { background: linear-gradient(135deg, #E63946, #F39800); border: 1px solid rgba(0,0,0,0.05); } 
         
         .route-info { flex: 1; min-width: 0; }
         .route-dest { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .route-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
-        .eta-tag { background: var(--brand-color); color: var(--brand-text); padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 14px; min-width: 65px; text-align: center; }
+        .route-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight: 400; display: flex; align-items: center; gap: 6px; }
 
         .back-bar { padding: calc(var(--safe-top) - 10px) 24px 15px; background: var(--bg-color); display: flex; align-items: center; justify-content: space-between; z-index: 100; }
-        .back-btn { background: var(--surface-color); border: 1px solid var(--border-soft); color: var(--text-primary); font-size: 14px; padding: 8px 16px; border-radius: 16px; cursor: pointer; font-weight: 600;}
+        .back-btn { background: var(--surface-color); border: 1px solid var(--border-soft); color: var(--text-primary); font-size: 14px; font-weight: 500; padding: 8px 16px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .back-btn svg { width: 16px; height: 16px; }
+        #details-title { font-size: 17px; font-weight: 600; }
         
-        #map { width: 100%; height: 28vh; border-radius: 0 0 24px 24px; flex-shrink: 0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); z-index: 10; }
-        .stop-list-wrapper { flex: 1; overflow-y: auto; padding: 16px 24px calc(110px + var(--safe-bottom)); }
+        #map { width: 100%; height: 28vh; border-radius: 0 0 24px 24px; flex-shrink: 0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); z-index: 10; position: relative;}
+        .stop-list-wrapper { flex: 1; overflow-y: auto; padding: 16px 24px calc(110px + var(--safe-bottom)); scroll-behavior: smooth; }
 
-        .bottom-nav-wrapper { position: absolute; bottom: 0; left: 0; right: 0; height: calc(85px + var(--safe-bottom)); z-index: 1000; pointer-events: none; }
-        .bottom-nav-wrapper.hide { transform: translateY(100%); transition: transform 0.3s ease; }
+        .bottom-nav-wrapper { position: absolute; bottom: 0; left: 0; right: 0; height: calc(85px + var(--safe-bottom)); z-index: 1000; pointer-events: none; transition: transform 0.3s ease; }
+        .bottom-nav-wrapper.hide { transform: translateY(100%); }
         .nav-bg-shape { position: absolute; bottom: 0; width: 100%; height: calc(75px + var(--safe-bottom)); background: var(--nav-bg); pointer-events: auto; border-top: 1px solid var(--border-soft); }
         .nav-tabs { position: absolute; top: 10px; left: 0; right: 0; height: 65px; display: flex; justify-content: space-around; align-items: center; z-index: 1010; pointer-events: auto; }
-        .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; cursor: pointer; color: var(--nav-icon); }
-        .nav-tab.active { color: var(--brand-text); }
-        .nav-tab svg { width: 24px; height: 24px; fill: currentColor; }
-        .nav-tab span { font-size: 11px; font-weight: 500; margin-top: 4px; }
+        .nav-tab { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+        .nav-tab svg { width: 24px; height: 24px; fill: var(--nav-icon); transition: all 0.3s ease; }
+        .nav-tab span { font-size: 11px; font-weight: 500; color: var(--nav-icon); margin-top: 4px; transition: opacity 0.3s; }
+        .nav-tab.active svg { transform: translateY(-16px); fill: var(--brand-text); }
+        .nav-tab.active span { opacity: 0; }
+        .nav-indicator { position: absolute; top: -8px; width: 56px; height: 4px; background: var(--brand-text); border-radius: 4px; left: 0; transition: left 0.3s ease; z-index: 1005; pointer-events: auto; }
 
-        .status-text { text-align: center; color: var(--text-secondary); padding: 40px 20px; font-size: 14px; line-height: 1.5; }
+        .status-text { text-align: center; color: var(--text-secondary); padding: 40px 20px; font-size: 14px; font-weight: 400; line-height: 1.6; }
+        .status-icon { display: flex; justify-content: center; margin-bottom: 16px; color: var(--text-secondary); }
+        .status-icon svg { width: 36px; height: 36px; fill: currentColor; }
+        .icon-spin svg { animation: spin 1s linear infinite; }
+
+        /* ====== Custom Keyboard Styles ====== */
+        .custom-kb-overlay {
+            position: fixed; bottom: -100%; left: 0; right: 0; 
+            background: #D1D5DB; 
+            padding: 8px 6px calc(8px + var(--safe-bottom)) 6px; 
+            z-index: 2000; transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; gap: 8px; flex-direction: column;
+        }
+        @media (prefers-color-scheme: dark) {
+            .custom-kb-overlay { background: #2C2C2E; }
+        }
+        .custom-kb-overlay.show { bottom: 0; box-shadow: 0 -4px 24px rgba(0,0,0,0.1); }
         
-        /* Custom Keyboard */
-        .custom-kb-overlay { position: fixed; bottom: -100%; left: 0; right: 0; background: #D1D5DB; padding: 8px 6px calc(8px + var(--safe-bottom)); z-index: 2000; transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        @media (prefers-color-scheme: dark) { .custom-kb-overlay { background: #2C2C2E; } }
-        .custom-kb-overlay.show { bottom: 0; }
+        .kb-header { display: flex; justify-content: flex-end; padding: 0 8px 4px; }
+        .kb-close-btn { color: #007AFF; font-size: 15px; font-weight: 600; cursor: pointer; background: transparent; border: none; }
+        @media (prefers-color-scheme: dark) { .kb-close-btn { color: #0A84FF; } }
+        
         .kb-body { display: flex; gap: 8px; }
+        
         .kb-left { flex: 4; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .kb-right { flex: 3; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; overflow-y: auto; max-height: 218px; }
-        .kb-key { background: #FFF; border-radius: 6px; font-size: 22px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 1px rgba(0,0,0,0.2); cursor: pointer; border: none; }
-        @media (prefers-color-scheme: dark) { .kb-key { background: #48484A; color: #FFF; } }
-        .kb-key.disabled { opacity: 0.2; pointer-events: none; }
-        .kb-del { background: #BCC0C6; } .kb-zero { grid-column: span 2; background: #BCC0C6; }
-        @media (prefers-color-scheme: dark) { .kb-zero, .kb-del { background: #636366; } }
+        
+        .kb-right { 
+            flex: 3; 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 6px; 
+            overflow-y: auto; 
+            max-height: 218px; /* 剛好對齊左側數字鍵盤的 4 行高度 */
+            padding-right: 2px;
+        }
+        .kb-right::-webkit-scrollbar { display: none; }
+        
+        .kb-key {
+            background: #FFFFFF; border: none; border-radius: 6px;
+            font-size: 22px; font-weight: 400; color: #000;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.25); height: 50px; 
+            cursor: pointer; transition: background 0.1s, opacity 0.2s;
+            user-select: none; -webkit-user-select: none;
+        }
+        @media (prefers-color-scheme: dark) {
+            .kb-key { background: #48484A; color: #FFF; box-shadow: 0 1px 1px rgba(0,0,0,0.5); }
+        }
+        
+        .kb-key:active { background: #BCC0C6; }
+        @media (prefers-color-scheme: dark) { .kb-key:active { background: #636366; } }
+        
+        .kb-key.disabled { opacity: 0.3; pointer-events: none; }
+        
+        .kb-zero { grid-column: span 2; background: #BCC0C6; }
+        .kb-del { background: #BCC0C6; }
+        @media (prefers-color-scheme: dark) { 
+            .kb-zero, .kb-del { background: #636366; } 
+        }
+        .kb-del svg { width: 22px; height: 22px; fill: currentColor; }
+
     </style>
 </head>
 <body>
@@ -95,26 +201,32 @@
         <div class="header-section">
             <span class="greeting" id="greeting-text">早晨</span>
             <h1>搜尋路線</h1>
-            <div class="search-box" id="search-box-container" onclick="openKeyboard()">
+            <div class="search-box" id="search-box-container">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="routeSearch" placeholder="輸入路線號碼" readonly>
             </div>
         </div>
         <div class="scrollable-content" id="main-list">
-            <div class="status-text">載入資料中...</div>
+            <div class="status-text">
+                <div class="status-icon icon-spin">
+                    <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                </div>
+                正在載入路線資料...
+            </div>
         </div>
     </div>
 
     <div id="page-nearby" class="page">
-        <div class="header-section"><h1>附近車站</h1></div>
+        <div class="header-section" style="padding-bottom: 0;">
+            <h1>附近車站<button class="refresh-btn" id="nearby-refresh-btn" onclick="executeNearbyRefresh(true)">重新整理</button></h1>
+        </div>
         <div class="scrollable-content" id="nearby-list"></div>
     </div>
 
     <div id="page-details" class="page">
         <div class="back-bar">
-            <button class="back-btn" onclick="showPage('home', 0)">返回</button>
-            <div id="details-title" style="font-size:18px; font-weight:700;"></div>
-            <div style="width:60px;"></div>
+            <button class="back-btn" onclick="showPage('home', 0)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg> 返回</button>
+            <div id="details-title"></div><div style="width: 70px;"></div>
         </div>
         <div id="map"></div>
         <div class="stop-list-wrapper" id="details-list"></div>
@@ -122,230 +234,236 @@
 
     <div class="bottom-nav-wrapper" id="bottom-nav">
         <div class="nav-bg-shape"></div>
+        <div class="nav-indicator" id="nav-ind"></div>
         <div class="nav-tabs">
             <div class="nav-tab active" id="tab-0" onclick="showPage('home', 0)">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <span>路線</span>
             </div>
-            <div class="nav-tab" id="tab-1" onclick="executeNearbySearch()">
+            <div class="nav-tab" id="tab-1" onclick="showPage('nearby', 1)">
                 <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
                 <span>附近</span>
+            </div>
+            <div class="nav-tab" id="tab-2" onclick="if(currentIdx>-1 && currentRouteData.no) showPage('details', 2)">
+                <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                <span>路線圖</span>
             </div>
         </div>
     </div>
 
     <div class="custom-kb-overlay" id="customKb">
-        <div style="display:flex; justify-content:flex-end; padding:4px 8px 8px;"><button style="color:#007AFF; font-weight:700; font-size:16px; background:none; border:none;" onclick="closeKeyboard()">完成</button></div>
+        <div class="kb-header">
+            <button class="kb-close-btn" onclick="closeKeyboard()">完成</button>
+        </div>
         <div class="kb-body">
-            <div class="kb-left" id="kb-num"></div>
-            <div class="kb-right" id="kb-alpha"></div>
+            <div class="kb-left">
+                <button class="kb-key" data-val="1">1</button>
+                <button class="kb-key" data-val="2">2</button>
+                <button class="kb-key" data-val="3">3</button>
+                <button class="kb-key" data-val="4">4</button>
+                <button class="kb-key" data-val="5">5</button>
+                <button class="kb-key" data-val="6">6</button>
+                <button class="kb-key" data-val="7">7</button>
+                <button class="kb-key" data-val="8">8</button>
+                <button class="kb-key" data-val="9">9</button>
+                <button class="kb-key kb-zero" style="background:#BCC0C6;" data-val="0">0</button>
+                <button class="kb-key kb-del" data-val="del">
+                    <svg viewBox="0 0 24 24"><path d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-3 12.59L17.59 17 14 13.41 10.41 17 9 15.59 12.59 12 9 8.41 10.41 7 14 10.59 17.59 7 19 8.41 15.41 12 19 15.59z"/></svg>
+                </button>
+            </div>
+            <div class="kb-right">
+                <button class="kb-key" data-val="A">A</button>
+                <button class="kb-key" data-val="B">B</button>
+                <button class="kb-key" data-val="C">C</button>
+                <button class="kb-key" data-val="D">D</button>
+                <button class="kb-key" data-val="E">E</button>
+                <button class="kb-key" data-val="F">F</button>
+                <button class="kb-key" data-val="G">G</button>
+                <button class="kb-key" data-val="H">H</button>
+                <button class="kb-key" data-val="K">K</button>
+                <button class="kb-key" data-val="M">M</button>
+                <button class="kb-key" data-val="N">N</button>
+                <button class="kb-key" data-val="P">P</button>
+                <button class="kb-key" data-val="R">R</button>
+                <button class="kb-key" data-val="S">S</button>
+                <button class="kb-key" data-val="T">T</button>
+                <button class="kb-key" data-val="W">W</button>
+                <button class="kb-key" data-val="X">X</button>
+                <button class="kb-key" data-val="Y">Y</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let allRoutes = [], map, markers = [];
+    let allRoutes = [], currentIdx = 0;
+    let allStopsData = []; 
+    let currentRouteData = { no: '', co: '', dir: '', stype: '' };
+
+    function setGreeting() {
+        const h = new Date().getHours();
+        document.getElementById('greeting-text').innerText = (h>=5 && h<12) ? "早晨" : (h>=12 && h<18) ? "午安" : "晚安";
+    }
 
     async function init() {
-        const h = new Date().getHours();
-        document.getElementById('greeting-text').innerText = (h<12?"早晨":(h<18?"午安":"晚安"));
-        initKeyboardUI();
+        setGreeting();
+        setTimeout(() => moveIndicator(0), 50); 
+        initKeyboard(); 
         
         try {
-            const [kmbRes, ctbRes] = await Promise.all([
-                fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/').then(r => r.json()),
-                fetch('https://rt.data.gov.hk/v2/transport/citybus/route/ctb').then(r => r.json())
-            ]);
+            const kmbReq = fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/').then(r => r.json());
+            const ctbReq = fetch('https://rt.data.gov.hk/v2/transport/citybus/route/ctb').then(r => r.json());
+            const [kmbRes, ctbRes] = await Promise.allSettled([kmbReq, ctbReq]);
 
             let routeMap = {};
-            
-            // 🐛 修復車站載入失敗：將 O/I 轉換為 outbound/inbound 以供車站 API 使用
-            kmbRes.data.forEach(r => {
-                let badge = r.route.match(/^[A|E|NA|R|S|X]/) ? 'badge-lwb' : 'badge-kmb';
-                let apiDir = r.bound === 'O' ? 'outbound' : 'inbound'; // 關鍵修復點！
-                routeMap[`${r.route}-${r.bound}-${r.service_type}`] = { 
-                    no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'KMB', badge: badge, dir: apiDir, stype: r.service_type 
-                };
-            });
+            if (kmbRes.status === 'fulfilled' && kmbRes.value.data) {
+                kmbRes.value.data.forEach(r => {
+                    let badge = r.route.match(/^[A|E|NA|R|S|X]/) ? 'badge-lwb' : 'badge-kmb';
+                    routeMap[`${r.route}-${r.bound}-${r.service_type}`] = { no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'KMB', badge: badge, dir: r.bound, stype: r.service_type };
+                });
+            }
 
-            ctbRes.data.forEach(r => {
-                routeMap[`${r.route}-O-CTB`] = { no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: 'outbound', stype: '1' };
-            });
+            if (ctbRes.status === 'fulfilled' && ctbRes.value.data) {
+                ctbRes.value.data.forEach(r => {
+                    const isJoint = (r.route.match(/\d+/) && parseInt(r.route.match(/\d+/)[0]) >= 100) || ['R8', 'S1'].includes(r.route);
+                    let kO = `${r.route}-O-1`, kI = `${r.route}-I-1`;
+                    if (isJoint && routeMap[kO]) { routeMap[kO].co = 'KMB+CTB'; routeMap[kO].badge = 'badge-joint'; } 
+                    else { routeMap[`${r.route}-O-CTB`] = { no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: 'O', stype: '1' }; }
+                    if (isJoint && routeMap[kI]) { routeMap[kI].co = 'KMB+CTB'; routeMap[kI].badge = 'badge-joint'; } 
+                    else { routeMap[`${r.route}-I-CTB`] = { no: r.route, dest: r.orig_tc, orig: r.dest_tc, co: 'CTB', badge: 'badge-ctb', dir: 'I', stype: '1' }; }
+                });
+            }
 
             allRoutes = Object.values(routeMap).sort((a, b) => a.no.localeCompare(b.no, undefined, { numeric: true }));
             renderList(allRoutes);
             updateKeyboardState();
-        } catch(e) { document.getElementById('main-list').innerHTML = "無法載入路線資料"; }
+            
+        } catch(e) { 
+            document.getElementById('main-list').innerHTML = `<div class="status-text">無法載入路線資料<br>請檢查網絡。</div>`; 
+        }
+    }
+
+    /* ====== Keyboard Logic ====== */
+    const searchInput = document.getElementById('routeSearch');
+    const customKb = document.getElementById('customKb');
+    const bottomNav = document.getElementById('bottom-nav');
+    const kbKeys = document.querySelectorAll('.kb-key');
+
+    function initKeyboard() {
+        document.getElementById('search-box-container').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openKeyboard();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!customKb.contains(e.target) && !document.getElementById('search-box-container').contains(e.target)) {
+                closeKeyboard();
+            }
+        });
+
+        kbKeys.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (btn.classList.contains('disabled')) return;
+
+                const val = btn.getAttribute('data-val');
+                let currentText = searchInput.value;
+
+                if (val === 'del') {
+                    searchInput.value = currentText.slice(0, -1);
+                } else {
+                    searchInput.value = currentText + val;
+                }
+
+                filterRoutes();
+                updateKeyboardState();
+            });
+        });
+    }
+
+    function openKeyboard() {
+        customKb.classList.add('show');
+        bottomNav.classList.add('hide'); 
+        document.getElementById('search-box-container').classList.add('kb-active');
+        updateKeyboardState();
+    }
+
+    function closeKeyboard() {
+        customKb.classList.remove('show');
+        bottomNav.classList.remove('hide');
+        document.getElementById('search-box-container').classList.remove('kb-active');
+    }
+
+    function updateKeyboardState() {
+        if(allRoutes.length === 0) return; 
+        const currentText = searchInput.value.toUpperCase();
+
+        kbKeys.forEach(btn => {
+            const val = btn.getAttribute('data-val');
+            
+            if (val === 'del') {
+                btn.classList.toggle('disabled', currentText.length === 0);
+                return;
+            }
+
+            const testVal = currentText + val;
+            const hasMatch = allRoutes.some(r => r.no.includes(testVal));
+            
+            if (hasMatch) {
+                btn.classList.remove('disabled');
+            } else {
+                btn.classList.add('disabled');
+            }
+        });
     }
 
     function renderList(list) {
         const container = document.getElementById('main-list');
         if(!list.length) { container.innerHTML = `<div class="status-text">找不到相關路線</div>`; return; }
-        container.innerHTML = list.slice(0, 100).map(r => `
-            <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}')">
+        container.innerHTML = list.map(r => `
+            <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}')">
                 <div class="route-badge ${r.badge}">${r.no}</div>
                 <div class="route-info">
                     <div class="route-dest">往 ${r.dest}</div>
-                    <div class="route-sub">${r.co} • 由 ${r.orig} 出發</div>
+                    <div class="route-sub"><span style="background:var(--border-soft); padding:2px 6px; border-radius:4px; font-size:11px;">${r.co === 'KMB+CTB' ? '聯營' : r.co}</span> 由 ${r.orig} 出發</div>
                 </div>
             </div>`).join('');
     }
 
-    // 🚀 加速版 + 修復版的車站詳情抓取
-    async function openRoute(no, co, dir, stype) {
+    function filterRoutes() {
+        const q = searchInput.value.toUpperCase().trim();
+        if (!q) { renderList(allRoutes); return; }
+        const filtered = allRoutes.filter(r => r.no.includes(q));
+        renderList(filtered);
+    }
+
+    function openRoute(no, co, dir, stype, dest) {
+        closeKeyboard(); 
+        currentRouteData = { no, co, dir, stype };
         showPage('details', 2);
-        document.getElementById('details-title').innerText = `路線 ${no}`;
-        const list = document.getElementById('details-list');
-        list.innerHTML = `<div class="status-text">正在極速載入車站...</div>`;
-        
-        if (!map) {
-            map = L.map('map', { zoomControl: false }).setView([22.3, 114.1], 13);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-        }
-        markers.forEach(m => map.removeLayer(m)); markers = [];
-
-        try {
-            // 這裡的 dir 已經在 init() 被轉換成了正確的 outbound 或 inbound
-            let url = (co === 'KMB') ? 
-                `https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${no}/${dir}/${stype}` :
-                `https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/${no}/${dir}`;
-            
-            const stopRes = await fetch(url).then(r => r.json());
-            
-            // 使用 Promise.all 並發抓取車站名字，速度提升20倍，解決卡頓！
-            const stopsData = await Promise.all(stopRes.data.map(async (s) => {
-                try {
-                    let infoUrl = (co === 'KMB') ? `https://data.etabus.gov.hk/v1/transport/kmb/stop/${s.stop}` : `https://rt.data.gov.hk/v2/transport/citybus/stop/${s.stop}`;
-                    const info = await fetch(infoUrl).then(r => r.json());
-                    return { seq: s.seq, stop: s.stop, name: info.data.name_tc, lat: info.data.lat, lng: info.data.long };
-                } catch(e) { return { seq: s.seq, stop: s.stop, name: "未知車站", lat: 22.3, lng: 114.1 }; }
-            }));
-
-            let html = "";
-            stopsData.forEach(s => {
-                html += `
-                <div class="route-item" onclick="getETA('${co}', '${s.stop}', '${no}', this)">
-                    <div style="font-weight:700; color:var(--text-secondary); width:25px;">${s.seq}</div>
-                    <div class="route-info"><div class="route-dest" style="font-size:16px;">${s.name}</div></div>
-                    <div class="eta-tag">查閱</div>
-                </div>`;
-                let m = L.circleMarker([s.lat, s.lng], { radius: 6, color: '#E63946', fillOpacity: 1 }).addTo(map);
-                markers.push(m);
-            });
-            
-            list.innerHTML = html;
-            if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds(), { padding: [20, 20] });
-        } catch(e) { list.innerHTML = `<div class="status-text">載入失敗，請重試。</div>`; }
+        document.getElementById('details-title').innerText = no;
+        document.getElementById('details-list').innerHTML = `<div class="status-text">路線圖準備中...</div>`;
     }
 
-    async function getETA(co, stopId, no, el) {
-        const badge = el.querySelector('.eta-tag');
-        badge.innerText = "稍候...";
-        try {
-            let url = (co === 'KMB') ? `https://data.etabus.gov.hk/v1/transport/kmb/eta/${stopId}/${no}/1` : `https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${stopId}/${no}`;
-            const res = await fetch(url).then(r => r.json());
-            const first = res.data.filter(x => x.eta)[0];
-            if (!first) { badge.innerText = "末班車"; return; }
-            badge.innerText = Math.max(0, Math.round((new Date(first.eta) - new Date()) / 60000)) + " 分鐘";
-        } catch(e) { badge.innerText = "N/A"; }
-    }
-
-    // 📍 修復「附近」功能：加入 GPS 定位與距離計算 (Haversine Formula)
-    async function executeNearbySearch() {
-        showPage('nearby', 1);
-        const list = document.getElementById('nearby-list');
-        list.innerHTML = `<div class="status-text">📡 正在獲取您的 GPS 位置...</div>`;
-        
-        if (!navigator.geolocation) {
-            list.innerHTML = `<div class="status-text">您的裝置不支援定位功能。</div>`;
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude: lat, longitude: lng } = pos.coords;
-            list.innerHTML = `<div class="status-text">📍 定位成功！正在搜尋附近車站...</div>`;
-            
-            try {
-                // 獲取全港九巴車站
-                const res = await fetch('https://data.etabus.gov.hk/v1/transport/kmb/stop').then(r => r.json());
-                let stops = res.data;
-                
-                // 計算每個車站與你的距離 (米)
-                stops.forEach(s => {
-                    const R = 6371e3; // 地球半徑 (米)
-                    const φ1 = lat * Math.PI/180, φ2 = s.lat * Math.PI/180;
-                    const Δφ = (s.lat-lat) * Math.PI/180, Δλ = (s.long-lng) * Math.PI/180;
-                    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-                    s.distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                });
-
-                // 按距離排序，只取最近的 20 個站
-                stops.sort((a, b) => a.distance - b.distance);
-                const nearbyStops = stops.slice(0, 20);
-
-                list.innerHTML = nearbyStops.map(s => `
-                    <div class="route-item" style="display:block;">
-                        <div style="font-size:16px; font-weight:700;">${s.name_tc}</div>
-                        <div style="color:var(--text-secondary); font-size:13px; margin-top:6px;">
-                            🚶‍♂️ 距離約 ${Math.round(s.distance)} 米
-                        </div>
-                    </div>`).join('');
-            } catch(e) {
-                list.innerHTML = `<div class="status-text">獲取車站資料失敗</div>`;
-            }
-        }, (err) => {
-            list.innerHTML = `<div class="status-text">無法獲取定位，請確認已允許瀏覽器讀取 GPS。</div>`;
-        }, { enableHighAccuracy: true, timeout: 5000 });
-    }
-
-    // --- 鍵盤邏輯 ---
-    function initKeyboardUI() {
-        const numPad = document.getElementById('kb-num'), alphaPad = document.getElementById('kb-alpha');
-        "123456789".split('').forEach(n => numPad.innerHTML += `<button class="kb-key" data-val="${n}">${n}</button>`);
-        numPad.innerHTML += `<button class="kb-key kb-zero" data-val="0">0</button><button class="kb-key kb-del" data-val="del">←</button>`;
-        "ABCDEFG HKMNPRST WXYZ".replace(/ /g,'').split('').forEach(l => alphaPad.innerHTML += `<button class="kb-key" data-val="${l}">${l}</button>`);
-
-        document.querySelectorAll('.kb-key').forEach(k => {
-            k.onclick = (e) => {
-                e.stopPropagation();
-                const input = document.getElementById('routeSearch');
-                if (k.dataset.val === 'del') input.value = input.value.slice(0, -1);
-                else input.value += k.dataset.val;
-                renderList(allRoutes.filter(r => r.no.toUpperCase().includes(input.value.toUpperCase())));
-                updateKeyboardState();
-            }
-        });
-    }
-
-    function updateKeyboardState() {
-        const current = document.getElementById('routeSearch').value.toUpperCase();
-        document.querySelectorAll('.kb-key').forEach(k => {
-            if (k.dataset.val === 'del') { k.classList.toggle('disabled', current.length===0); return; }
-            k.classList.toggle('disabled', !allRoutes.some(r => r.no.toUpperCase().includes(current + k.dataset.val)));
-        });
-    }
-
-    function openKeyboard() {
-        document.getElementById('customKb').classList.add('show');
-        document.getElementById('bottom-nav').classList.add('hide');
-        document.getElementById('search-box-container').classList.add('kb-active');
-    }
-
-    function closeKeyboard() {
-        document.getElementById('customKb').classList.remove('show');
-        document.getElementById('bottom-nav').classList.remove('hide');
-        document.getElementById('search-box-container').classList.remove('kb-active');
+    function moveIndicator(idx) {
+        const activeTab = document.getElementById('tab-' + idx);
+        const ind = document.getElementById('nav-ind');
+        if (!activeTab || !ind) return;
+        const centerPos = (activeTab.getBoundingClientRect().left - document.querySelector('.nav-tabs').getBoundingClientRect().left) + (activeTab.getBoundingClientRect().width / 2);
+        ind.style.left = (centerPos - (ind.offsetWidth / 2)) + 'px';
     }
 
     function showPage(id, idx) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('page-' + id).classList.add('active');
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-        if(idx < 2) document.getElementById('tab-' + idx).classList.add('active');
-        if(id !== 'home') closeKeyboard();
+        document.getElementById('tab-' + idx).classList.add('active');
+        currentIdx = idx; moveIndicator(idx);
+        if(id !== 'home') closeKeyboard(); 
     }
 
+    window.addEventListener('resize', () => requestAnimationFrame(() => moveIndicator(currentIdx)));
     window.onload = init;
 </script>
 </body>
