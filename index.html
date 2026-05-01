@@ -100,20 +100,16 @@
         }
         .route-item:active { transform: scale(0.97); }
         
+        /* New Text-Only Route Badge Style */
         .route-badge { 
-            color: #fff; font-size: 18px; font-weight: 700; 
-            min-width: 60px; height: 44px; display: flex; align-items: center; justify-content: center; 
-            border-radius: 12px; padding: 0 8px; flex-shrink: 0; text-align: center;
+            color: var(--text-primary); font-size: 18px; font-weight: 700; 
+            min-width: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            flex-shrink: 0; text-align: center; background: transparent;
         }
-        .route-badge.small { min-width: 50px; height: 36px; font-size: 15px; border-radius: 10px; }
-        .badge-kmb { background: linear-gradient(135deg, #E63946, #D0202E); }
-        .badge-lwb { background: linear-gradient(135deg, #FFAA00, #F39800); }
-        .badge-ctb { background: linear-gradient(135deg, #FFF64D, #FFF200); color: #00558e; border: 1px solid rgba(0,0,0,0.05); }
-        .badge-joint { background: linear-gradient(135deg, #E63946, #F39800); border: 1px solid rgba(0,0,0,0.05); } 
-        .badge-nlb { background: linear-gradient(135deg, #007A60, #00997A); }
-        .badge-gmb { background: linear-gradient(135deg, #009E60, #00C853); border: 1px solid rgba(0,0,0,0.05); }
+        .route-badge.small { min-width: 50px; font-size: 16px; }
+        .route-co-text { font-size: 11px; font-weight: 500; color: var(--text-secondary); margin-top: 2px;}
         
-        .route-info { flex: 1; min-width: 0; }
+        .route-info { flex: 1; min-width: 0; border-left: 1px solid var(--border-soft); padding-left: 12px;}
         .route-dest { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .route-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight: 400; display: flex; align-items: center; gap: 6px; }
 
@@ -298,6 +294,42 @@
         noLocation: `<svg viewBox="0 0 24 24"><path d="M3.27 1.04L2 2.31l3.54 3.54C5.2 6.81 5 7.85 5 9c0 5.25 7 13 7 13s1.67-1.85 3.38-4.35L18.69 21l1.27-1.27L3.27 1.04zM12 4c3.87 0 7 3.13 7 7 0 1.25-.33 2.4-1.04 3.44L12.54 9.02A2.49 2.49 0 0 0 12 6.5c-1.38 0-2.5 1.12-2.5 2.5 0 .15.02.29.04.44L6.96 6.86A6.983 6.983 0 0 1 12 4z"/></svg>`
     };
 
+    /* -----------------------------------------------------------
+       LOCATION CACHE WRAPPER (Fixes Prompt Spam)
+    ----------------------------------------------------------- */
+    function getUserLocation(successCb, errorCb) {
+        const cached = localStorage.getItem('hkbus_loc');
+        const cacheTime = localStorage.getItem('hkbus_loc_time');
+        const now = new Date().getTime();
+        
+        // Cache location for 15 minutes (900000 ms) to avoid PWA prompt spam
+        if (cached && cacheTime && (now - parseInt(cacheTime) < 900000)) {
+            const pos = JSON.parse(cached);
+            successCb({ coords: { latitude: pos.lat, longitude: pos.lng } });
+            return;
+        }
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    localStorage.setItem('hkbus_loc', JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }));
+                    localStorage.setItem('hkbus_loc_time', now.toString());
+                    successCb(pos);
+                },
+                (err) => {
+                    console.warn("Location error:", err.message);
+                    if (err.code === err.PERMISSION_DENIED) {
+                        alert("請在瀏覽器設定中允許取用位置，以顯示附近路線。");
+                    }
+                    errorCb(err);
+                },
+                { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 }
+            );
+        } else {
+            errorCb({message: "Not supported"});
+        }
+    }
+
     function setGreeting() {
         const hour = new Date().getHours();
         const textEl = document.getElementById('greeting-text');
@@ -322,11 +354,6 @@
         const dl = (lon2-lon1) * Math.PI/180;
         const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-
-    function getBadgeClass(routeNo) {
-        if (routeNo.match(/^[A|E|NA|R|S|X]/)) return 'badge-lwb';
-        return 'badge-kmb';
     }
 
     async function init() {
@@ -355,8 +382,7 @@
                     let key = `${r.route}-${r.bound}-${r.service_type}`; 
                     routeMap[key] = {
                         no: r.route, dest: r.dest_tc, orig: r.orig_tc, 
-                        co: 'KMB', badge: getBadgeClass(r.route), 
-                        dir: r.bound, stype: r.service_type
+                        co: 'KMB', dir: r.bound, stype: r.service_type
                     };
                 });
             }
@@ -374,17 +400,15 @@
                     let keyO = `${r.route}-O-1`; 
                     if (isJointEligible && routeMap[keyO]) {
                         routeMap[keyO].co = 'KMB+CTB'; 
-                        routeMap[keyO].badge = 'badge-joint';
                     } else {
-                        routeMap[`${r.route}-O-CTB`] = { no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', badge: 'badge-ctb', dir: 'O', stype: '1' };
+                        routeMap[`${r.route}-O-CTB`] = { no: r.route, dest: r.dest_tc, orig: r.orig_tc, co: 'CTB', dir: 'O', stype: '1' };
                     }
 
                     let keyI = `${r.route}-I-1`;
                     if (isJointEligible && routeMap[keyI]) {
                         routeMap[keyI].co = 'KMB+CTB';
-                        routeMap[keyI].badge = 'badge-joint';
                     } else {
-                        routeMap[`${r.route}-I-CTB`] = { no: r.route, dest: r.orig_tc, orig: r.dest_tc, co: 'CTB', badge: 'badge-ctb', dir: 'I', stype: '1' };
+                        routeMap[`${r.route}-I-CTB`] = { no: r.route, dest: r.orig_tc, orig: r.dest_tc, co: 'CTB', dir: 'I', stype: '1' };
                     }
                 });
             }
@@ -397,8 +421,7 @@
                     let dest = parts[1] ? parts[1].trim() : orig;
                     routeMap[`NLB-${r.routeId}`] = {
                         no: r.routeNo, dest: dest, orig: orig, 
-                        co: 'NLB', badge: 'badge-nlb', 
-                        routeId: r.routeId, dir: '', stype: ''
+                        co: 'NLB', routeId: r.routeId, dir: '', stype: ''
                     };
                 });
             }
@@ -411,8 +434,7 @@
                             r.directions.forEach(d => {
                                 routeMap[`GMB-${r.route_id}-${d.route_seq}`] = {
                                     no: r.route_code, dest: d.dest_tc, orig: d.orig_tc,
-                                    co: 'GMB', badge: 'badge-gmb',
-                                    routeId: r.route_id, routeSeq: d.route_seq, dir: '', stype: ''
+                                    co: 'GMB', routeId: r.route_id, routeSeq: d.route_seq, dir: '', stype: ''
                                 };
                             });
                         }
@@ -513,15 +535,13 @@
         
         container.innerHTML = list.map(r => `
             <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}', '${r.routeId || ''}', '${r.routeSeq || ''}')">
-                <div class="route-badge ${r.badge}">${r.no}</div>
+                <div class="route-badge">
+                    <span>${r.no}</span>
+                    <span class="route-co-text">${r.co === 'KMB+CTB' ? '聯營' : (r.co === 'GMB' ? '小巴' : (r.co === 'NLB' ? '嶼巴' : r.co))}</span>
+                </div>
                 <div class="route-info">
                     <div class="route-dest">往 ${r.dest}</div>
-                    <div class="route-sub">
-                        <span style="background:var(--border-soft); padding:2px 6px; border-radius:4px; font-size:11px;">
-                            ${r.co === 'KMB+CTB' ? '聯營' : (r.co === 'GMB' ? '綠色小巴' : (r.co === 'NLB' ? '新大嶼山巴士' : r.co))}
-                        </span> 
-                        由 ${r.orig} 出發
-                    </div>
+                    <div class="route-sub">由 ${r.orig} 出發</div>
                 </div>
             </div>`).join('');
     }
@@ -571,25 +591,17 @@
                     正在定位您的位置...
                 </div>`;
             
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => { executeNearbyRefresh(false, pos.coords.latitude, pos.coords.longitude); },
-                    (err) => { 
-                        listEl.innerHTML = `
-                            <div class="status-text">
-                                <div class="status-icon">${icons.noLocation}</div>
-                                無法取得位置<br>請確定已開啟定位權限。
-                            </div>`; 
-                    },
-                    { timeout: 5000, enableHighAccuracy: true }
-                );
-            } else {
-                listEl.innerHTML = `
-                    <div class="status-text">
-                        <div class="status-icon">${icons.error}</div>
-                        您的裝置不支援定位功能。
-                    </div>`;
-            }
+            // Replaced raw navigator API with our caching wrapper
+            getUserLocation(
+                (pos) => { executeNearbyRefresh(false, pos.coords.latitude, pos.coords.longitude); },
+                (err) => { 
+                    listEl.innerHTML = `
+                        <div class="status-text">
+                            <div class="status-icon">${icons.noLocation}</div>
+                            無法取得位置<br>請確定已開啟定位權限。
+                        </div>`; 
+                }
+            );
         }
 
         if(nearbyRefreshInterval) clearInterval(nearbyRefreshInterval);
@@ -695,7 +707,6 @@
                         contentEl.innerHTML = `<div class="eta-empty" style="text-align:center;">現時未有班次</div>`;
                     } else {
                         contentEl.innerHTML = routesList.map(r => {
-                            let badgeClass = r.co === 'Joint' ? 'badge-joint' : (r.co === 'CTB' ? 'badge-ctb' : getBadgeClass(r.route));
                             let etasHtml = r.etas.slice(0, 3).map(eta => {
                                 let timeObj = formatEta(eta);
                                 return `<span class="eta-pill ${timeObj.isNear ? 'near' : ''}">${timeObj.label}</span>`;
@@ -703,7 +714,10 @@
                             
                             return `
                             <div class="nearby-row">
-                                <div class="route-badge small ${badgeClass}">${r.route}</div>
+                                <div class="route-badge small">
+                                    <span>${r.route}</span>
+                                    <span class="route-co-text">${r.co === 'Joint' ? '聯營' : r.co}</span>
+                                </div>
                                 <div class="route-info">
                                     <div class="route-dest" style="font-size:15px;">往 ${r.dest}</div>
                                     <div class="nearby-etas">${etasHtml}</div>
@@ -836,24 +850,19 @@
     }
 
     function locateNearestStopAndOpen(stops) {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    let minD = Infinity, nearestIdx = 0;
-                    stops.forEach((s, i) => {
-                        if(!isNaN(s.lat)) {
-                            let d = getDistance(pos.coords.latitude, pos.coords.longitude, s.lat, s.lng);
-                            if (d < minD) { minD = d; nearestIdx = i; }
-                        }
-                    });
-                    toggleStop(nearestIdx);
-                },
-                (err) => { toggleStop(0); },
-                { timeout: 3000 }
-            );
-        } else {
-            toggleStop(0);
-        }
+        getUserLocation(
+            (pos) => {
+                let minD = Infinity, nearestIdx = 0;
+                stops.forEach((s, i) => {
+                    if(!isNaN(s.lat)) {
+                        let d = getDistance(pos.coords.latitude, pos.coords.longitude, s.lat, s.lng);
+                        if (d < minD) { minD = d; nearestIdx = i; }
+                    }
+                });
+                toggleStop(nearestIdx);
+            },
+            (err) => { toggleStop(0); }
+        );
     }
 
     async function toggleStop(idx) {
