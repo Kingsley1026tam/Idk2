@@ -43,7 +43,9 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "PingFang HK", sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-color); color: var(--text-primary); height: 100dvh; overflow: hidden; transition: background-color 0.4s ease; }
+        
+        /* Added touch-action: manipulation to lock double-tap zoom */
+        body { background-color: var(--bg-color); color: var(--text-primary); height: 100dvh; overflow: hidden; transition: background-color 0.4s ease; touch-action: manipulation; }
 
         .app-container { width: 100%; height: 100dvh; display: flex; flex-direction: column; position: relative; }
 
@@ -100,18 +102,26 @@
         }
         .route-item:active { transform: scale(0.97); }
         
-        /* New Text-Only Route Badge Style */
         .route-badge { 
             color: var(--text-primary); font-size: 18px; font-weight: 700; 
             min-width: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
             flex-shrink: 0; text-align: center; background: transparent;
         }
         .route-badge.small { min-width: 50px; font-size: 16px; }
-        .route-co-text { font-size: 11px; font-weight: 500; color: var(--text-secondary); margin-top: 2px;}
         
         .route-info { flex: 1; min-width: 0; border-left: 1px solid var(--border-soft); padding-left: 12px;}
-        .route-dest { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .route-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight: 400; display: flex; align-items: center; gap: 6px; }
+        .route-dest { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+        .route-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight: 400; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+        
+        /* New Inline Company Tag Style */
+        .route-co-text-inline {
+            background: var(--border-soft);
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
 
         /* Nearby Styles */
         .nearby-group { background: var(--surface-color); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border-soft); }
@@ -161,7 +171,8 @@
         .nav-tab span { font-size: 11px; font-weight: 500; color: var(--nav-icon); margin-top: 4px; transition: opacity 0.3s; }
         .nav-tab.active svg { transform: translateY(-16px); fill: var(--brand-text); }
         .nav-tab.active span { opacity: 0; }
-        .nav-indicator { position: absolute; top: -8px; width: 56px; height: 4px; background: var(--brand-text); border-radius: 4px; left: 0; transition: left 0.3s ease; z-index: 1005; pointer-events: auto; }
+        /* Adjusted Line Indicator to below the icon */
+        .nav-indicator { position: absolute; bottom: 10px; top: auto; width: 32px; height: 4px; background: var(--brand-text); border-radius: 4px; left: 0; transition: left 0.3s ease, opacity 0.3s; z-index: 1005; pointer-events: auto; }
 
         /* Status UI */
         .status-text { text-align: center; color: var(--text-secondary); padding: 40px 20px; font-size: 14px; font-weight: 400; line-height: 1.6; }
@@ -181,8 +192,11 @@
         .kb-key { background: #FFF; border-radius: 6px; font-size: 22px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 1px rgba(0,0,0,0.2); cursor: pointer; border: none; font-weight: 500; color: #000; }
         @media (prefers-color-scheme: dark) { .kb-key { background: #48484A; color: #FFF; } }
         .kb-key.disabled { opacity: 0.2; pointer-events: none; }
-        .kb-del { background: #BCC0C6; } .kb-zero { grid-column: span 2; background: #BCC0C6; }
-        @media (prefers-color-scheme: dark) { .kb-zero, .kb-del { background: #636366; } }
+        
+        /* Fixed keyboard 0 key color to match 1-9 */
+        .kb-zero { grid-column: span 2; }
+        .kb-del { background: #BCC0C6; } 
+        @media (prefers-color-scheme: dark) { .kb-del { background: #636366; } }
     </style>
 </head>
 <body>
@@ -254,11 +268,7 @@
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <span>路線</span>
             </div>
-            <div class="nav-tab" id="tab-2" onclick="if(currentIdx>-1 && currentRouteData.no) showPage('details', 2)">
-                <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
-                <span>路線圖</span>
             </div>
-        </div>
     </div>
 
     <div class="custom-kb-overlay" id="customKb">
@@ -294,15 +304,11 @@
         noLocation: `<svg viewBox="0 0 24 24"><path d="M3.27 1.04L2 2.31l3.54 3.54C5.2 6.81 5 7.85 5 9c0 5.25 7 13 7 13s1.67-1.85 3.38-4.35L18.69 21l1.27-1.27L3.27 1.04zM12 4c3.87 0 7 3.13 7 7 0 1.25-.33 2.4-1.04 3.44L12.54 9.02A2.49 2.49 0 0 0 12 6.5c-1.38 0-2.5 1.12-2.5 2.5 0 .15.02.29.04.44L6.96 6.86A6.983 6.983 0 0 1 12 4z"/></svg>`
     };
 
-    /* -----------------------------------------------------------
-       LOCATION CACHE WRAPPER (Fixes Prompt Spam)
-    ----------------------------------------------------------- */
     function getUserLocation(successCb, errorCb) {
         const cached = localStorage.getItem('hkbus_loc');
         const cacheTime = localStorage.getItem('hkbus_loc_time');
         const now = new Date().getTime();
         
-        // Cache location for 15 minutes (900000 ms) to avoid PWA prompt spam
         if (cached && cacheTime && (now - parseInt(cacheTime) < 900000)) {
             const pos = JSON.parse(cached);
             successCb({ coords: { latitude: pos.lat, longitude: pos.lng } });
@@ -430,13 +436,23 @@
             [gmbResH, gmbResK, gmbResN].forEach(res => {
                 if(res.status === 'fulfilled' && res.value.data) {
                     res.value.data.forEach(r => {
-                        if(r.directions) {
-                            r.directions.forEach(d => {
-                                routeMap[`GMB-${r.route_id}-${d.route_seq}`] = {
-                                    no: r.route_code, dest: d.dest_tc, orig: d.orig_tc,
-                                    co: 'GMB', routeId: r.route_id, routeSeq: d.route_seq, dir: '', stype: ''
+                        // Extract routes originating and destinations for Minibus properly
+                        if (r.description_tc) {
+                            let parts = r.description_tc.split(' - ');
+                            if (parts.length === 1) parts = r.description_tc.split('-');
+                            let orig = parts[0] ? parts[0].trim() : '';
+                            let dest = parts[1] ? parts[1].trim() : orig;
+                            
+                            routeMap[`GMB-${r.route_id}-1`] = {
+                                no: r.route_code, dest: dest, orig: orig,
+                                co: 'GMB', routeId: r.route_id, routeSeq: 1, dir: '', stype: ''
+                            };
+                            if (parts.length > 1) {
+                                routeMap[`GMB-${r.route_id}-2`] = {
+                                    no: r.route_code, dest: orig, orig: dest,
+                                    co: 'GMB', routeId: r.route_id, routeSeq: 2, dir: '', stype: ''
                                 };
-                            });
+                            }
                         }
                     });
                 }
@@ -448,7 +464,6 @@
             renderList(allRoutes, 'main-list');
             updateKeyboardState();
             
-            // Start locating user immediately on Home page load
             startNearbyLogic();
             
         } catch(e) { 
@@ -460,9 +475,6 @@
         }
     }
 
-    /* -----------------------------------------------------------
-       鍵盤邏輯 UI (Keyboard Logic)
-    ----------------------------------------------------------- */
     function initKeyboardUI() {
         const numPad = document.getElementById('kb-num'), alphaPad = document.getElementById('kb-alpha');
         "123456789".split('').forEach(n => numPad.innerHTML += `<button class="kb-key" data-val="${n}">${n}</button>`);
@@ -501,7 +513,6 @@
         document.getElementById('bottom-nav').classList.remove('hide');
         document.getElementById('search-box-container').classList.remove('kb-active');
     }
-    /* ----------------------------------------------------------- */
 
     async function loadAllStopsInBackground() {
         try {
@@ -514,7 +525,6 @@
                 })
             ]);
             
-            // Re-trigger nearby search if we are on home and it was waiting
             if (currentIdx === 0 && !isFetchingNearby && allStopsData.length > 0) {
                 startNearbyLogic();
             }
@@ -533,17 +543,25 @@
             return; 
         }
         
-        container.innerHTML = list.map(r => `
+        container.innerHTML = list.map(r => {
+            let coLabel = r.co;
+            if(r.co === 'KMB+CTB') coLabel = '九巴 / 城巴';
+            else if(r.co === 'GMB') coLabel = '專線小巴';
+            else if(r.co === 'NLB') coLabel = '新大嶼山巴士';
+            else if(r.co === 'KMB') coLabel = '九巴';
+            else if(r.co === 'CTB') coLabel = '城巴';
+
+            return `
             <div class="route-item" onclick="openRoute('${r.no}', '${r.co}', '${r.dir}', '${r.stype}', '${r.dest}', '${r.routeId || ''}', '${r.routeSeq || ''}')">
                 <div class="route-badge">
                     <span>${r.no}</span>
-                    <span class="route-co-text">${r.co === 'KMB+CTB' ? '聯營' : (r.co === 'GMB' ? '小巴' : (r.co === 'NLB' ? '嶼巴' : r.co))}</span>
                 </div>
                 <div class="route-info">
                     <div class="route-dest">往 ${r.dest}</div>
-                    <div class="route-sub">由 ${r.orig} 出發</div>
+                    <div class="route-sub">由 ${r.orig} 出發 <span class="route-co-text-inline">${coLabel}</span></div>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }
 
     function filterRoutes() {
@@ -572,7 +590,6 @@
         const btn = document.getElementById('nearby-refresh-btn');
         const searchQ = document.getElementById('routeSearch').value.toUpperCase().trim();
         
-        // Hide button if actively searching
         if (!searchQ) btn.style.display = 'flex';
 
         if (allStopsData.length === 0) {
@@ -591,7 +608,6 @@
                     正在定位您的位置...
                 </div>`;
             
-            // Replaced raw navigator API with our caching wrapper
             getUserLocation(
                 (pos) => { executeNearbyRefresh(false, pos.coords.latitude, pos.coords.longitude); },
                 (err) => { 
@@ -716,10 +732,9 @@
                             <div class="nearby-row">
                                 <div class="route-badge small">
                                     <span>${r.route}</span>
-                                    <span class="route-co-text">${r.co === 'Joint' ? '聯營' : r.co}</span>
                                 </div>
                                 <div class="route-info">
-                                    <div class="route-dest" style="font-size:15px;">往 ${r.dest}</div>
+                                    <div class="route-dest" style="font-size:15px;">往 ${r.dest} <span class="route-co-text-inline">${r.co === 'Joint' ? '九巴/城巴' : (r.co === 'KMB' ? '九巴' : '城巴')}</span></div>
                                     <div class="nearby-etas">${etasHtml}</div>
                                 </div>
                             </div>`;
@@ -916,7 +931,7 @@
                     if (res.eta) {
                         let etas = res.eta.filter(e => e.estimatedArrivalTime);
                         validEtas.push(...etas.map(e => ({ 
-                            eta: e.estimatedArrivalTime.replace(' ', 'T') + '+08:00', // Fix timezone format
+                            eta: e.estimatedArrivalTime.replace(' ', 'T') + '+08:00',
                             rmk: e.routeVariantName_c || '', co: '大嶼山巴士' 
                         })));
                     }
@@ -972,7 +987,12 @@
     function moveIndicator(idx) {
         const activeTab = document.getElementById('tab-' + idx);
         const ind = document.getElementById('nav-ind');
-        if (!activeTab || !ind) return;
+        if (!ind) return;
+        if (!activeTab) {
+            ind.style.opacity = '0';
+            return;
+        }
+        ind.style.opacity = '1';
         const container = document.querySelector('.nav-tabs');
         const tabRect = activeTab.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
@@ -983,8 +1003,10 @@
     function showPage(id, idx) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('page-' + id).classList.add('active');
+        
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + idx).classList.add('active');
+        const tab = document.getElementById('tab-' + idx);
+        if (tab) tab.classList.add('active');
         
         currentIdx = idx;
         moveIndicator(idx);
