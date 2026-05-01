@@ -195,11 +195,34 @@
     <div id="page-home" class="page active">
         <div class="header-section">
             <span class="greeting" id="greeting-text">早晨</span>
-            <h1>搜尋路線</h1>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h1 style="margin-bottom:0;">附近與搜尋</h1>
+                <button class="refresh-btn" id="nearby-refresh-btn" onclick="executeNearbyRefresh(true)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> 整理
+                </button>
+            </div>
             <div class="search-box" id="search-box-container" onclick="openKeyboard()">
-                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="routeSearch" placeholder="輸入路線號碼" readonly>
             </div>
+        </div>
+        <div class="scrollable-content" id="home-content">
+            <div id="search-results" style="display: none;"></div>
+            
+            <div id="nearby-list">
+                <div class="status-text">
+                    <div class="status-icon icon-spin">
+                        <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                    </div>
+                    正在準備車站數據...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-routes" class="page">
+        <div class="header-section" style="padding-bottom: 0;">
+            <h1>所有路線</h1>
         </div>
         <div class="scrollable-content" id="main-list">
             <div class="status-text">
@@ -207,25 +230,6 @@
                     <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
                 </div>
                 正在載入路線資料...
-            </div>
-        </div>
-    </div>
-
-    <div id="page-nearby" class="page">
-        <div class="header-section" style="padding-bottom: 0;">
-            <h1>
-                附近車站
-                <button class="refresh-btn" id="nearby-refresh-btn" onclick="executeNearbyRefresh(true)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> 重新整理
-                </button>
-            </h1>
-        </div>
-        <div class="scrollable-content" id="nearby-list">
-            <div class="status-text">
-                <div class="status-icon">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                </div>
-                請允許存取位置權限以顯示附近車站
             </div>
         </div>
     </div>
@@ -247,12 +251,12 @@
         <div class="nav-indicator" id="nav-ind"></div>
         <div class="nav-tabs">
             <div class="nav-tab active" id="tab-0" onclick="showPage('home', 0)">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                <span>首頁</span>
+            </div>
+            <div class="nav-tab" id="tab-1" onclick="showPage('routes', 1)">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <span>路線</span>
-            </div>
-            <div class="nav-tab" id="tab-1" onclick="showPage('nearby', 1)">
-                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                <span>附近</span>
             </div>
             <div class="nav-tab" id="tab-2" onclick="if(currentIdx>-1 && currentRouteData.no) showPage('details', 2)">
                 <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
@@ -419,8 +423,12 @@
             allRoutes = Object.values(routeMap);
             allRoutes.sort((a, b) => a.no.localeCompare(b.no, undefined, { numeric: true, sensitivity: 'base' }));
 
-            renderList(allRoutes);
+            renderList(allRoutes, 'main-list');
             updateKeyboardState();
+            
+            // Start locating user immediately on Home page load
+            startNearbyLogic();
+            
         } catch(e) { 
             document.getElementById('main-list').innerHTML = `
                 <div class="status-text">
@@ -475,17 +483,25 @@
 
     async function loadAllStopsInBackground() {
         try {
-            fetch('https://data.etabus.gov.hk/v1/transport/kmb/stop').then(r=>r.json()).then(d => {
-                if(d.data) d.data.forEach(s => allStopsData.push({ id: s.stop, name: s.name_tc, lat: s.lat, lng: s.long, co: 'KMB' }));
-            });
-            fetch('https://rt.data.gov.hk/v2/transport/citybus/stop').then(r=>r.json()).then(d => {
-                if(d.data) d.data.forEach(s => allStopsData.push({ id: s.stop, name: s.name_tc, lat: s.lat, lng: s.long, co: 'CTB' }));
-            });
+            await Promise.all([
+                fetch('https://data.etabus.gov.hk/v1/transport/kmb/stop').then(r=>r.json()).then(d => {
+                    if(d.data) d.data.forEach(s => allStopsData.push({ id: s.stop, name: s.name_tc, lat: s.lat, lng: s.long, co: 'KMB' }));
+                }),
+                fetch('https://rt.data.gov.hk/v2/transport/citybus/stop').then(r=>r.json()).then(d => {
+                    if(d.data) d.data.forEach(s => allStopsData.push({ id: s.stop, name: s.name_tc, lat: s.lat, lng: s.long, co: 'CTB' }));
+                })
+            ]);
+            
+            // Re-trigger nearby search if we are on home and it was waiting
+            if (currentIdx === 0 && !isFetchingNearby && allStopsData.length > 0) {
+                startNearbyLogic();
+            }
+            
         } catch(e) {}
     }
 
-    function renderList(list) {
-        const container = document.getElementById('main-list');
+    function renderList(list, targetId = 'main-list') {
+        const container = document.getElementById(targetId);
         if(!list.length) { 
             container.innerHTML = `
                 <div class="status-text">
@@ -512,15 +528,32 @@
 
     function filterRoutes() {
         const q = document.getElementById('routeSearch').value.toUpperCase().trim();
-        if (!q) { renderList(allRoutes); return; }
+        const searchResults = document.getElementById('search-results');
+        const nearbyList = document.getElementById('nearby-list');
+        const refreshBtn = document.getElementById('nearby-refresh-btn');
+
+        if (!q) { 
+            searchResults.style.display = 'none';
+            nearbyList.style.display = 'block';
+            if(refreshBtn) refreshBtn.style.display = 'flex';
+            return; 
+        }
+        
+        searchResults.style.display = 'block';
+        nearbyList.style.display = 'none';
+        if(refreshBtn) refreshBtn.style.display = 'none';
+        
         const filtered = allRoutes.filter(r => r.no.includes(q) || r.dest.includes(q));
-        renderList(filtered);
+        renderList(filtered, 'search-results');
     }
 
     function startNearbyLogic() {
         const listEl = document.getElementById('nearby-list');
         const btn = document.getElementById('nearby-refresh-btn');
-        btn.style.display = 'flex';
+        const searchQ = document.getElementById('routeSearch').value.toUpperCase().trim();
+        
+        // Hide button if actively searching
+        if (!searchQ) btn.style.display = 'flex';
 
         if (allStopsData.length === 0) {
             listEl.innerHTML = `
@@ -531,30 +564,32 @@
             return;
         }
 
-        listEl.innerHTML = `
-            <div class="status-text">
-                <div class="status-icon icon-spin">${icons.spinner}</div>
-                正在定位您的位置...
-            </div>`;
-        
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => { executeNearbyRefresh(false, pos.coords.latitude, pos.coords.longitude); },
-                (err) => { 
-                    listEl.innerHTML = `
-                        <div class="status-text">
-                            <div class="status-icon">${icons.noLocation}</div>
-                            無法取得位置<br>請確定已開啟定位權限。
-                        </div>`; 
-                },
-                { timeout: 5000, enableHighAccuracy: true }
-            );
-        } else {
+        if (nearbyGroupsCache.length === 0 && !isFetchingNearby) {
             listEl.innerHTML = `
                 <div class="status-text">
-                    <div class="status-icon">${icons.error}</div>
-                    您的裝置不支援定位功能。
+                    <div class="status-icon icon-spin">${icons.spinner}</div>
+                    正在定位您的位置...
                 </div>`;
+            
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { executeNearbyRefresh(false, pos.coords.latitude, pos.coords.longitude); },
+                    (err) => { 
+                        listEl.innerHTML = `
+                            <div class="status-text">
+                                <div class="status-icon">${icons.noLocation}</div>
+                                無法取得位置<br>請確定已開啟定位權限。
+                            </div>`; 
+                    },
+                    { timeout: 5000, enableHighAccuracy: true }
+                );
+            } else {
+                listEl.innerHTML = `
+                    <div class="status-text">
+                        <div class="status-icon">${icons.error}</div>
+                        您的裝置不支援定位功能。
+                    </div>`;
+            }
         }
 
         if(nearbyRefreshInterval) clearInterval(nearbyRefreshInterval);
@@ -949,7 +984,7 @@
         
         if (id !== 'home') closeKeyboard();
         
-        if (id === 'nearby') {
+        if (id === 'home') {
             startNearbyLogic();
         } else {
             stopNearbyLogic();
