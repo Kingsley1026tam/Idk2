@@ -822,11 +822,23 @@
             } 
             else if (co === 'GMB') {
                 const s = await fetch(`https://data.etabus.gov.hk/v1/transport/minibus/route-stop/${routeId}/${routeSeq}`).then(r => r.json());
-                stops = (s.data || []).map(st => ({
-                    id: st.stop_id, name: st.name_tc,
-                    lat: st.coordinates && st.coordinates.wgs84 ? st.coordinates.wgs84.latitude : NaN,
-                    lng: st.coordinates && st.coordinates.wgs84 ? st.coordinates.wgs84.longitude : NaN
-                }));
+                const stopList = s.data || [];
+                
+                for (let i = 0; i < stopList.length; i += 15) {
+                    const batch = stopList.slice(i, i + 15).map(async (item) => {
+                        try {
+                            const info = await fetch(`https://data.etabus.gov.hk/v1/transport/minibus/stop/${item.stop_id}`).then(r => r.json());
+                            return {
+                                id: item.stop_id, 
+                                name: info.data.name_tc,
+                                lat: info.data.coordinates && info.data.coordinates.wgs84 ? info.data.coordinates.wgs84.latitude : NaN,
+                                lng: info.data.coordinates && info.data.coordinates.wgs84 ? info.data.coordinates.wgs84.longitude : NaN
+                            };
+                        } catch(e) { return null; }
+                    });
+                    const results = await Promise.all(batch);
+                    stops.push(...results.filter(Boolean));
+                }
             }
 
             currentStopsData = stops;
@@ -942,7 +954,7 @@
                 promises.push(fetch(`https://data.etabus.gov.hk/v1/transport/minibus/eta/${routeId}/${stop.id}`).then(r=>r.json()).then(res => {
                     if (res.data) {
                         let etas = res.data.filter(e => e.route_seq == routeSeq && e.eta_seq && e.timestamp);
-                        validEtas.push(...etas.map(e => ({ eta: e.timestamp, rmk: e.remarks_tc || '', co: '小巴' })));
+                        validEtas.push(...etas.map(e => ({ eta: e.timestamp, rmk: e.remark_tc || e.remarks_tc || '', co: '小巴' })));
                     }
                 }).catch(()=>{}));
             }
